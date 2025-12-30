@@ -1,40 +1,48 @@
+# Arc & Grid
+
+arcify, https://github.com/mimetaur/arcify, Map arc encoders to parameters
+Combiner, https://github.com/dstroud/combiner, Configure & aggregate multiple grids
+gridkeys, https://github.com/p3r7/gridkeys, Use grid as MIDI keyboard anywhere
+iiitoii, https://github.com/frederickk/iiitoii, iii community scripts ported to norns + crow
+
 # FX
 
 FX, https://github.com/sixolet/fx, Multi-effects processor for norns, https://github.com/vehka/fx, serial insert effects
-FX Distortion, https://github.com/vehka/fx_distortion, Distortion from the pedalboard script
-FX Bitcrusher, https://github.com/vehka/fx_bitcrusher, Bitcrusher from the pedalboard script
+FX Bitcrusher, https://github.com/vehka/fx_bitcrusher, bitcrusher from the pedalboard script
 FX Delay, https://github.com/sixolet/fx_delay, basic delay with a very gentle filter on it
+FX Distortion, https://github.com/vehka/fx_distortion, distortion from the pedalboard script
 FX Filter, https://github.com/xmacex/fx_filter, DFM1 sc filter as an effect
 FX Grains, https://github.com/sixolet/fx_grains, MI Clouds
-FX Resonator, https://github.com/sixolet/fx_resonator, MI Rings, also an nb voice
-FX Tanh, https://github.com/sixolet/fx_tanh, tanh saturator, meant for use as an end-of-chain insert
+FX Resonator, https://github.com/sixolet/fx_resonator, "MI Rings, also an nb voice"
+FX Tanh, https://github.com/sixolet/fx_tanh, "tanh saturator, meant for use as an end-of-chain insert"
 
 # MIDI & OSC
 
-Midigrid, https://github.com/jaggednz/midigrid, Use launchpads & MIDI controllers as grid, https://github.com/miker2049/midigrid
-passthrough v2, https://github.com/nattog/passthrough, MIDI routing between connected ports
-CyberMIDI, https://github.com/dstroud/cybermidi, Send MIDI between Norns over IP
-midikit, https://github.com/xmacex/midikit, MIDI CC output from mod matrix
-mididi, https://github.com/dwtong/midididi, record and play back midi cc loops
-osc-mod, https://github.com/jaseknighter/osc-mod, allows the params from any norns script to be controlled via osc
-changez, https://github.com/cachilders/changez, convert program changes to cc
 14b-mod, https://github.com/Thomasbru/14b-mod, map 14-bit midi to norns parameters
+changez, https://github.com/cachilders/changez, convert program changes to cc
+CyberMIDI, https://github.com/dstroud/cybermidi, Send MIDI between Norns over IP
+mididi, https://github.com/dwtong/midididi, record and play back midi cc loops
+Midigrid, https://github.com/jaggednz/midigrid, Use launchpads & MIDI controllers as grid, https://github.com/miker2049/midigrid
+midikit, https://github.com/xmacex/midikit, MIDI CC output from mod matrix
 mod_clock_div, https://github.com/tomwaters/mod_clock_div, output divisions of the norns clock as midi note on events
-
-# Grid & Arc
-
-Combiner, https://github.com/dstroud/combiner, Configure & aggregate multiple grids
-gridkeys, https://github.com/p3r7/gridkeys, Use grid as MIDI keyboard anywhere
-arcify, https://github.com/mimetaur/arcify, Map arc encoders to parameters
-iiitoii, https://github.com/frederickk/iiitoii, iii community scripts ported to norns + crow
+osc-mod, https://github.com/jaseknighter/osc-mod, allows the params from any norns script to be controlled via osc
+passthrough v2, https://github.com/nattog/passthrough, MIDI routing between connected ports
 
 # Modulation & sequencing
 
+Choukanzu, https://github.com/ryleelyman/choukanzu, bird’s-eye view of norns script params
 Mod Matrix, https://github.com/sixolet/matrix, Modulation matrix and API for sources
-Pam's toolkit, https://github.com/sixolet/toolkit, LFOs, rhythms, sequencers, and mults (needs Mod Matrix)
+Pam's toolkit, https://github.com/sixolet/toolkit, "LFOs, rhythms, sequencers, and mults (needs Mod Matrix)"
 pset_seq, https://github.com/jaseknighter/pset_seq, Sequencer for script presets
 Telexo, https://github.com/brokyo/norns-telexo, Control TXO CV and TR ports from params
-Choukanzu, https://github.com/ryleelyman/choukanzu, bird’s-eye view of norns script params
+
+# Network & Streaming
+
+broadcast, https://github.com/schollz/norns-broadcast, Stream audio to norns.online
+ndi-mod, https://github.com/Dewb/ndi-mod, Share norns screen over network via NDI
+QRemote, https://github.com/Quixotic7/qremote, Remote control for norns
+receiver, https://github.com/schollz/norns-receiver, Receive broadcasts from norns users
+semiconductor, https://github.com/jaseknighter/semiconductor, Norns ensemble performance script
 
 # Nota Bene (nb)
 
@@ -51,23 +59,16 @@ nb_harvest, https://github.com/imminentgloom/nb_harvest, høstløv, the synth vo
 Seeker, https://github.com/brokyo/seeker, A lightweight n.b arpeggiation mod
 Oilcan Percussion Co, https://github.com/zjb-s/oilcan, Greasy percussion synth for n.b
 
-# Network & Streaming
+# Uncategorized / Miscellaneous
 
-QRemote, https://github.com/Quixotic7/qremote, Remote control for norns
-ndi-mod, https://github.com/Dewb/ndi-mod, Share norns screen over network via NDI
-receiver, https://github.com/schollz/norns-receiver, Receive broadcasts from norns users
-broadcast, https://github.com/schollz/norns-broadcast, Stream audio to norns.online
-semiconductor, https://github.com/jaseknighter/semiconductor, Norns ensemble performance script
-
-# Misc
-
-warmreload, https://github.com/schollz/warmreload, Auto-reload scripts during development
-random_script, https://github.com/stvnrlly/random_script, Find a random script on norns
-Oblique, https://github.com/stvnrlly/oblique, Oblique Strategies in params menu
+cron, https://github.com/stvnrlly/cron, Manage cron on norns via Maiden
+during development
+lumberjack, https://github.com/stvnrlly/lumberjack, save the current script’s matron logs to a text file
+Monomaniac, https://github.com/xmacex/monomaniac, Toggle stereo and mono input
 nice-tapes, https://github.com/MentalSandal/nice-tapes, Customized tape file names
+Oblique, https://github.com/stvnrlly/oblique, Oblique Strategies in params menu
 playdate-norns, https://github.com/midouest/playdate-norns, Playdate API available for norns scripts
 playdate-norns-arc, https://github.com/midouest/playdate-norns-arc, Turn Playdate into an arc emulator for norns
-Monomaniac, https://github.com/xmacex/monomaniac, Toggle stereo and mono input
-lumberjack, https://github.com/stvnrlly/lumberjack, save the current script’s matron logs to a text file
-cron, https://github.com/stvnrlly/cron, Manage cron on norns via Maiden
+random_script, https://github.com/stvnrlly/random_script, Find a random script on norns
+warmreload, https://github.com/schollz/warmreload, Auto-reload scripts 
 z_tuning, https://github.com/catfact/z_tuning, apply custom tunings

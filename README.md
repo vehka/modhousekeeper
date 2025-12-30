@@ -36,7 +36,7 @@ From your Norns hardware:
 
 - **E2** (Encoder 2): Scroll through list
 - **K2** (Key 2): Exit to mods menu
-- **K3** (Key 3): Open action menu (on mods) / Enter settings (on ⚙ SETTINGS)
+- **K3** (Key 3): Open action menu (on mods) / Enter settings (on ▦ Settings)
 
 **Action Menu:**
 
@@ -62,13 +62,13 @@ Each alternative repository entry includes a description of what makes it differ
 
 ### Status Indicators
 
-- **-** : Mod not installed
-- **\*** : Mod installed
-- **U** : Update available
+- **○** : Mod not installed
+- **◉** : Mod installed
+- **◆** : Update available
 
 ### Settings
 
-Access the settings screen by scrolling to **⚙ SETTINGS** at the top of the mod list and pressing **K3**. Available settings:
+Access the settings screen by scrolling to **▦ Settings** at the top of the mod list and pressing **K3**. Available settings:
 
 - **Disable start animation**: Disable the startup animation (feature not yet implemented)
 - **Use local mods.list**: When enabled, uses `mods.list.local` instead of `mods.list`
@@ -96,6 +96,7 @@ ThirdMod, https://github.com/username/third, Description of third mod
   - **URL** (required): Primary GitHub repository
   - **Description** (required): Brief one-line description
   - **Alternative repos** (optional): Pairs of URL and description for development branches, forks, etc.
+  - **Quoting**: Use double quotes around any field containing commas (e.g., `"description with, commas"`)
 - Empty lines are ignored
 ## Version History
 
