@@ -32,19 +32,49 @@ From your Norns hardware:
 
 ### Controls
 
-**While browsing mods:**
+**Mod List:**
 
-- **E2** (Encoder 2): Scroll through mod list
-- **E3 Right** (Encoder 3 clockwise): Show install/update confirmation
-- **E3 Left** (Encoder 3 counter-clockwise): Show remove confirmation
-- **K2** (Key 2): Exit back to mods menu
-- **K3** (Key 3): Quick install/update (shows confirmation)
+- **E2** (Encoder 2): Scroll through list
+- **K2** (Key 2): Exit to mods menu
+- **K3** (Key 3): Open action menu (on mods) / Enter settings (on ⚙ SETTINGS)
+
+**Action Menu:**
+
+- **E2** (Encoder 2): Navigate menu options
+- **K2** (Key 2): Close menu
+- **K3** (Key 3): Execute selected action
+
+**Settings:**
+
+- **E2** (Encoder 2): Navigate settings
+- **E3** (Encoder 3): Toggle setting value
+- **K2** (Key 2): Return to mod list
+
+### Action Menu
+
+Press **K3** on any mod to open its action menu, which shows:
+
+- **Mod description** - Brief info about the mod
+- **Primary actions** - Install, Update (if available), or Remove
+- **Alternative repos** - Install from development branches or forks (if available)
+
+Each alternative repository entry includes a description of what makes it different from the main version.
 
 ### Status Indicators
 
 - **-** : Mod not installed
 - **\*** : Mod installed
 - **U** : Update available
+
+### Settings
+
+Access the settings screen by scrolling to **⚙ SETTINGS** at the top of the mod list and pressing **K3**. Available settings:
+
+- **Disable start animation**: Disable the startup animation (feature not yet implemented)
+- **Use local mods.list**: When enabled, uses `mods.list.local` instead of `mods.list`
+  - This prevents git merge conflicts when pulling updates to modhousekeeper
+  - The first time you enable this, a local copy is automatically created
+  - You can then customize your local list without affecting the main file
 
 ### Adding Mods to the List
 
@@ -53,7 +83,7 @@ Edit `mods.list` in the ModHousekeeper directory:
 ```
 # Category Name
 ModName, https://github.com/username/modname, Brief description of the mod
-AnotherMod, https://github.com/username/another, Description here, https://github.com/fork/another
+AnotherMod, https://github.com/username/another, Description here, https://github.com/fork/another, Fork with extra features
 
 # Another Category
 ThirdMod, https://github.com/username/third, Description of third mod
@@ -61,12 +91,12 @@ ThirdMod, https://github.com/username/third, Description of third mod
 
 **Format:**
 - Category headers start with `#`
-- Mod entries: `ModName, GitURL, Description [, alt_url1, alt_url2, ...]`
+- Mod entries: `ModName, GitURL, Description [, alt_url1, alt_desc1, alt_url2, alt_desc2, ...]`
   - **Name** (required): Display name
   - **URL** (required): Primary GitHub repository
   - **Description** (required): Brief one-line description
-  - **Alternative URLs** (optional): Development branches, forks, etc.
-- Empty lines and comments are ignored
+  - **Alternative repos** (optional): Pairs of URL and description for development branches, forks, etc.
+- Empty lines are ignored
 ## Version History
 
 ### v1.0.0

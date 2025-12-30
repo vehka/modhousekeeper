@@ -1,6 +1,6 @@
 # FX
 
-FX, https://github.com/sixolet/fx, Multi-effects processor for norns, https://github.com/vehka/fx
+FX, https://github.com/sixolet/fx, Multi-effects processor for norns, https://github.com/vehka/fx, serial insert effects
 FX Distortion, https://github.com/vehka/fx_distortion, Distortion from the pedalboard script
 FX Bitcrusher, https://github.com/vehka/fx_bitcrusher, Bitcrusher from the pedalboard script
 FX Delay, https://github.com/sixolet/fx_delay, basic delay with a very gentle filter on it
