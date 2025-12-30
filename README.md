@@ -52,12 +52,21 @@ Edit `mods.list` in the ModHousekeeper directory:
 
 ```
 # Category Name
-ModName, https://github.com/username/modname
-AnotherMod, https://github.com/username/anothername
+ModName, https://github.com/username/modname, Brief description of the mod
+AnotherMod, https://github.com/username/another, Description here, https://github.com/fork/another
 
 # Another Category
-ThirdMod, https://github.com/username/thirdmod
+ThirdMod, https://github.com/username/third, Description of third mod
 ```
+
+**Format:**
+- Category headers start with `#`
+- Mod entries: `ModName, GitURL, Description [, alt_url1, alt_url2, ...]`
+  - **Name** (required): Display name
+  - **URL** (required): Primary GitHub repository
+  - **Description** (required): Brief one-line description
+  - **Alternative URLs** (optional): Development branches, forks, etc.
+- Empty lines and comments are ignored
 ## Version History
 
 ### v1.0.0

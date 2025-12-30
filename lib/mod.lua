@@ -1,18 +1,59 @@
 -- modhousekeeper
--- v1.0.0 @hwileniu
+-- v1.0.0 by vehka
 -- Norns mod manager with install, update, and removal functionality
+
 
 local mod = require 'core/mods'
 local util = require 'util'
 local tabutil = require 'tabutil'
 
+-- Debug log file
+local log_file_path = "/home/we/dust/modhousekeeper-debug.log"
+local function debug_log(msg)
+  print("modhousekeeper: " .. msg)
+  local f = io.open(log_file_path, "a")
+  if f then
+    f:write(os.date("%Y-%m-%d %H:%M:%S") .. " - " .. msg .. "\n")
+    f:close()
+  end
+end
+
+debug_log("=== MOD LOADING START ===")
+
 -- Check if mod is already installed
 if note then
+  print("modhousekeeper: mod already loaded, skipping")
   return
 end
 
+-- Try to find mods.list in multiple locations
+local function find_mods_list()
+  local possible_paths = {
+    _path.code .. "modhousekeeper/mods.list",
+    _path.code .. "modhousekeeper/lib/mods.list",
+    "/home/we/dust/code/modhousekeeper/mods.list",
+  }
+
+  for _, path in ipairs(possible_paths) do
+    local f = io.open(path, "r")
+    if f then
+      f:close()
+      debug_log("found mods.list at: " .. path)
+      return path
+    end
+  end
+
+  debug_log("ERROR - mods.list not found in any location!")
+  debug_log("tried paths:")
+  for _, path in ipairs(possible_paths) do
+    debug_log("  - " .. path)
+  end
+
+  return _path.code .. "modhousekeeper/mods.list"  -- fallback
+end
+
 local ModHousekeeper = {
-  mods_list_path = _path.code .. "modhousekeeper/mods.list",
+  mods_list_path = find_mods_list(),
   install_path = _path.code,
 
   -- UI state
@@ -43,17 +84,23 @@ end
 
 -- Parse mods.list file
 function ModHousekeeper.parse_mods_list()
+  debug_log("parsing mods.list from: " .. ModHousekeeper.mods_list_path)
+
   local f = io.open(ModHousekeeper.mods_list_path, "r")
   if not f then
-    print("modhousekeeper: could not open mods.list")
+    debug_log("ERROR - could not open mods.list at: " .. ModHousekeeper.mods_list_path)
     return
   end
 
   local current_category = nil
   local categories = {}
   local all_mods = {}
+  local line_num = 0
+  local mod_count = 0
 
   for line in f:lines() do
+    line_num = line_num + 1
+
     -- Skip empty lines
     if line:match("%S") then
       -- Check if it's a category header (starts with #)
@@ -61,17 +108,37 @@ function ModHousekeeper.parse_mods_list()
       if category then
         current_category = category
         categories[current_category] = {}
+        print("modhousekeeper: found category: " .. category)
       else
-        -- Parse mod entry: Name, URL
-        local name, url = line:match("^([^,]+),%s*(.+)")
-        if name and url and current_category then
-          name = name:gsub("^%s*(.-)%s*$", "%1")  -- trim whitespace
-          url = url:gsub("^%s*(.-)%s*$", "%1")
+        -- Parse mod entry: Name, URL, Description [, alt_url1, alt_url2, ...]
+        -- Split by comma and trim each field
+        local fields = {}
+        for field in line:gmatch("([^,]+)") do
+          local trimmed = field:gsub("^%s*(.-)%s*$", "%1")  -- trim whitespace
+          table.insert(fields, trimmed)
+        end
+
+        if #fields >= 3 and current_category then
+          local name = fields[1]
+          local url = fields[2]
+          local description = fields[3]
           local repo_id = ModHousekeeper.extract_repo_name(url)
+
+          if not repo_id then
+            print("modhousekeeper: WARNING - could not extract repo_id from URL: " .. url .. " (line " .. line_num .. ")")
+          end
+
+          -- Collect alternative URLs (fields 4+)
+          local alt_urls = {}
+          for i = 4, #fields do
+            table.insert(alt_urls, fields[i])
+          end
 
           local mod_entry = {
             name = name,
             url = url,
+            description = description,
+            alt_urls = alt_urls,
             repo_id = repo_id,  -- actual repository name for filesystem
             category = current_category,
             installed = false,
@@ -79,12 +146,19 @@ function ModHousekeeper.parse_mods_list()
           }
           table.insert(categories[current_category], mod_entry)
           all_mods[mod_entry.name] = mod_entry
+          mod_count = mod_count + 1
+        elseif #fields < 3 and current_category then
+          print("modhousekeeper: WARNING - skipping line " .. line_num .. " (only " .. #fields .. " fields): " .. line)
+        elseif not current_category then
+          print("modhousekeeper: WARNING - skipping line " .. line_num .. " (no current category): " .. line)
         end
       end
     end
   end
 
   f:close()
+
+  print("modhousekeeper: parsed " .. mod_count .. " mods in " .. tabutil.count(categories) .. " categories")
 
   ModHousekeeper.categories = categories
   ModHousekeeper.all_mods = all_mods
@@ -94,8 +168,10 @@ end
 -- Build flattened list for display
 function ModHousekeeper.build_flat_list()
   local flat = {}
+  local category_count = 0
 
   for cat_name, mods in pairs(ModHousekeeper.categories) do
+    category_count = category_count + 1
     -- Add category header
     table.insert(flat, {
       type = "category",
@@ -112,6 +188,7 @@ function ModHousekeeper.build_flat_list()
   end
 
   ModHousekeeper.flat_list = flat
+  print("modhousekeeper: built flat list with " .. #flat .. " items from " .. category_count .. " categories")
 end
 
 -- Check installation status of all mods
@@ -226,14 +303,28 @@ end
 
 -- Initialize mod
 function ModHousekeeper.init()
-  print("ModHousekeeper: initializing")
-  ModHousekeeper.parse_mods_list()
-  ModHousekeeper.check_installation_status()
+  debug_log("=== INIT START ===")
+
+  local status, err = pcall(function()
+    debug_log("calling parse_mods_list()")
+    ModHousekeeper.parse_mods_list()
+
+    debug_log("calling check_installation_status()")
+    ModHousekeeper.check_installation_status()
+  end)
+
+  if not status then
+    debug_log("ERROR during init: " .. tostring(err))
+  else
+    debug_log("=== INIT COMPLETE ===")
+    debug_log("Parsed " .. tabutil.count(ModHousekeeper.all_mods) .. " total mods")
+    debug_log("Flat list has " .. #ModHousekeeper.flat_list .. " items")
+  end
 end
 
 -- Hook: system_post_startup
 function ModHousekeeper.system_post_startup()
-  print("ModHousekeeper: system started")
+  print("modhousekeeper: system started")
 end
 
 -- Menu UI object
@@ -307,6 +398,12 @@ end
 menu_ui.enc = function(n, delta)
   if ModHousekeeper.confirm_dialog then
     -- Ignore encoder input during confirmation dialog
+    return
+  end
+
+  -- Guard against empty list
+  if #ModHousekeeper.flat_list == 0 then
+    print("modhousekeeper: flat_list is empty, cannot navigate")
     return
   end
 
@@ -386,6 +483,17 @@ menu_ui.redraw = function()
     screen.line(128, 10)
     screen.stroke()
 
+    -- Check if list is empty
+    if #ModHousekeeper.flat_list == 0 then
+      screen.level(8)
+      screen.move(64, 35)
+      screen.text_center("No mods found")
+      screen.move(64, 45)
+      screen.text_center("Check matron for errors")
+      screen.update()
+      return
+    end
+
     -- Calculate scroll bounds
     local start_idx = ModHousekeeper.scroll_offset + 1
     local end_idx = math.min(start_idx + ModHousekeeper.max_visible - 1, #ModHousekeeper.flat_list)
@@ -424,13 +532,30 @@ menu_ui.redraw = function()
       y = y + 9
     end
 
-    -- Draw message if present
+    -- Draw description for selected mod at bottom
+    local selected_item = ModHousekeeper.flat_list[ModHousekeeper.selected_index]
+    if selected_item and selected_item.type == "mod" and selected_item.data.description then
+      local desc = selected_item.data.description
+      -- Truncate if too long
+      if #desc > 40 then
+        desc = desc:sub(1, 37) .. "..."
+      end
+
+      screen.level(0)
+      screen.rect(0, 53, 128, 11)
+      screen.fill()
+      screen.level(8)
+      screen.move(2, 60)
+      screen.text(desc)
+    end
+
+    -- Draw message if present (overlays description)
     if ModHousekeeper.message ~= "" then
       screen.level(0)
-      screen.rect(0, 55, 128, 10)
+      screen.rect(0, 53, 128, 11)
       screen.fill()
       screen.level(15)
-      screen.move(64, 62)
+      screen.move(64, 60)
       screen.text_center(ModHousekeeper.message)
     end
   end
@@ -439,10 +564,15 @@ menu_ui.redraw = function()
 end
 
 -- Initialize the mod
+print("modhousekeeper: calling init()")
 ModHousekeeper.init()
 
 -- Register menu UI
+print("modhousekeeper: registering menu UI")
 mod.menu.register(mod.this_name, menu_ui)
 
 -- Register hooks
+print("modhousekeeper: registering hooks")
 mod.hook.register("system_post_startup", "modhousekeeper_system_post_startup", ModHousekeeper.system_post_startup)
+
+print("modhousekeeper: mod file loaded successfully!")
