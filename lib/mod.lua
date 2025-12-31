@@ -5,6 +5,7 @@
 local mod = require 'core/mods'
 local util = require 'util'
 local tabutil = require 'tabutil'
+local animation = include('modhousekeeper/lib/animation')
 
 -- Debug mode - set to false to disable debug messages
 local DEBUG = false
@@ -634,16 +635,41 @@ function ModHousekeeper.system_post_startup()
 end
 
 -- Menu UI object
-local menu_ui = {}
+local menu_ui = {
+  animation_active = false,
+}
 
 menu_ui.init = function()
   ModHousekeeper.check_installation_status()
+
+  -- Start animation if not disabled
+  if not ModHousekeeper.settings.disable_animation then
+    menu_ui.animation_active = true
+    animation.start(function()
+      menu_ui.animation_active = false
+      mod.menu.redraw()
+    end)
+  end
 end
 
-menu_ui.deinit = function() end
+menu_ui.deinit = function()
+  -- Stop animation if still running
+  if menu_ui.animation_active then
+    animation.stop()
+    menu_ui.animation_active = false
+  end
+end
 
 menu_ui.key = function(n, z)
   if z > 0 then  -- Key down
+    -- Skip animation if active
+    if menu_ui.animation_active then
+      animation.stop()
+      menu_ui.animation_active = false
+      mod.menu.redraw()
+      return
+    end
+
     if ModHousekeeper.action_menu then
       -- In action menu
       if n == 2 then
@@ -1114,6 +1140,12 @@ end
 
 menu_ui.redraw = function()
   screen.clear()
+
+  -- Draw animation if active
+  if menu_ui.animation_active then
+    animation.draw()
+    return
+  end
 
   -- Draw base screen
   if ModHousekeeper.current_screen == "mod_list" then
