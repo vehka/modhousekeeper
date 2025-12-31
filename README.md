@@ -1,14 +1,18 @@
 # modhousekeeper
 
-A Norns mod manager for the installation, updating, and removal of mods.
+A norns mod manager for the installation, updating, and removal of mods.
 
 ## Features
 
 - Browse available mods organized by category
 - Visual indicators for installation status
+- Supports local mods not defined by modhousekeeper's mods.list
 - Install mods with a single action
 - Check for and install updates
 - Remove installed mods
+- Supports local mod lists
+- Support alternative versions of mods that are in a different repository or a branch (useful when testing new features)
+- Fancy starting animation (based on Tobias V. Langhoff's tweetcart) that can be bypassed or disabled from settings
 
 ## Installation
 
@@ -56,9 +60,9 @@ Press **K3** on any mod to open its action menu, which shows:
 
 - **Mod description** - Brief info about the mod
 - **Primary actions** - Install, Update (if available), or Remove
-- **Alternative repos** - Install from development branches or forks (if available)
+- **Alternative repos** - Install from development branches or different repositories (if available)
 
-Each alternative repository entry includes a description of what makes it different from the main version.
+Each alternative repository entry includes a description, defined in the main mod list (see below).
 
 ### Status Indicators
 
@@ -82,11 +86,13 @@ Edit `mods.list` in the ModHousekeeper directory:
 
 ```
 # Category Name
+
 ModName, https://github.com/username/modname, Brief description of the mod
 AnotherMod, https://github.com/username/another, Description here, https://github.com/fork/another, Fork with extra features
 
 # Another Category
-ThirdMod, https://github.com/username/third, Description of third mod
+
+ThirdMod, https://github.com/username/third, "Description of third mod, with nifty features, commas in description require double quotes"
 ```
 
 **Format:**
@@ -98,6 +104,7 @@ ThirdMod, https://github.com/username/third, Description of third mod
   - **Alternative repos** (optional): Pairs of URL and description for development branches, forks, etc.
   - **Quoting**: Use double quotes around any field containing commas (e.g., `"description with, commas"`)
 - Empty lines are ignored
+
 ## Version History
 
 ### v1.0.0
@@ -106,3 +113,6 @@ ThirdMod, https://github.com/username/third, Description of third mod
 - Category organization
 - Update checking
 
+## GenAI disclaimer
+
+* Co-created with Claude 4.5 Sonnet and Opus
