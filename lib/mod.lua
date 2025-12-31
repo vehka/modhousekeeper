@@ -645,10 +645,17 @@ menu_ui.init = function()
   -- Start animation if not disabled
   if not ModHousekeeper.settings.disable_animation then
     menu_ui.animation_active = true
-    animation.start(function()
-      menu_ui.animation_active = false
-      mod.menu.redraw()
-    end)
+    animation.start(
+      function()
+        -- On complete callback
+        menu_ui.animation_active = false
+        mod.menu.redraw()
+      end,
+      function()
+        -- On redraw callback
+        mod.menu.redraw()
+      end
+    )
   end
 end
 

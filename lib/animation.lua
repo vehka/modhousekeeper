@@ -1,6 +1,15 @@
 -- animation.lua
 -- Lighthouse starting animation for modhousekeeper
 
+-- Debug mode - set to false to disable debug messages
+local DEBUG = false
+
+local function debug(msg)
+  if DEBUG then
+    print("modhousekeeper: " .. msg)
+  end
+end
+
 local Animation = {
   b = 128,
   t = 0,
@@ -48,9 +57,11 @@ function Animation.reset()
 end
 
 -- Start the animation
-function Animation.start(on_complete)
+function Animation.start(on_complete, on_redraw)
   Animation.reset()
   Animation.on_complete = on_complete
+  Animation.on_redraw = on_redraw
+  debug("animation started")
 
   -- Start animation clock
   Animation.clock_id = clock.run(function()
@@ -58,9 +69,15 @@ function Animation.start(on_complete)
     while Animation.state ~= "done" do
       clock.sleep(step_s)
       Animation.update()
+
+      -- Trigger redraw callback
+      if Animation.on_redraw then
+        Animation.on_redraw()
+      end
     end
 
     -- Animation completed
+    debug("animation completed")
     if Animation.on_complete then
       Animation.on_complete()
     end
@@ -69,6 +86,7 @@ end
 
 -- Stop the animation
 function Animation.stop()
+  debug("animation stopped/skipped")
   if Animation.clock_id then
     clock.cancel(Animation.clock_id)
     Animation.clock_id = nil
@@ -86,13 +104,20 @@ function Animation.update()
   if Animation.state == "running" then
     Animation.t = Animation.t + 0.02
 
+    -- Debug: print every 30 frames (~0.5 seconds)
+    if math.floor(Animation.t * 50) % 30 == 0 then
+      debug("animation t=" .. string.format("%.2f", Animation.t))
+    end
+
     -- Check for transition to clearing state
     if Animation.t > 0.90 and Animation.t < 0.99 then
+      debug("animation transitioning to clearing")
       Animation.state = "clearing"
 
       -- Schedule transition to text state
       clock.run(function()
         clock.sleep(1)
+        debug("animation transitioning to text")
         Animation.state = "text"
       end)
     end
