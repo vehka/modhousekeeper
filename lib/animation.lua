@@ -110,6 +110,7 @@ function Animation.update()
     end
 
     -- Check for transition to clearing state
+    -- Transition at t=0.90 (sweep completes via remapping in draw function)
     if Animation.t > 0.90 and Animation.t < 0.99 then
       debug("animation transitioning to clearing")
       Animation.state = "clearing"
@@ -151,8 +152,13 @@ end
 
 -- Draw the lighthouse scene
 function Animation.draw_lighthouse()
-  local s = math.sin(Animation.t)
-  local c = Animation.b * math.cos(Animation.t) + Animation.o
+  -- Remap t to complete full sweep (π/2) by t=0.90
+  -- This accelerates the beam toward the end for better visual pacing
+  local target_t = 0.90
+  local sweep_angle = Animation.t * (math.pi / 2) / target_t
+
+  local s = math.sin(sweep_angle)
+  local c = Animation.b * math.cos(sweep_angle) + Animation.o
 
   cls(0)
 
