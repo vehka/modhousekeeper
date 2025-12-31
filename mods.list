@@ -31,6 +31,7 @@ passthrough v2, https://github.com/nattog/passthrough, MIDI routing between conn
 # Modulation & sequencing
 
 Choukanzu, https://github.com/ryleelyman/choukanzu, bird’s-eye view of norns script params
+cyrene, https://github.com/21echoes/cyrene, drum sequencer based on MI's Grids
 Mod Matrix, https://github.com/sixolet/matrix, Modulation matrix and API for sources
 Pam's toolkit, https://github.com/sixolet/toolkit, "LFOs, rhythms, sequencers, and mults (needs Mod Matrix)"
 pset_seq, https://github.com/jaseknighter/pset_seq, Sequencer for script presets
