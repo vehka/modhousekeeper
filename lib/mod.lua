@@ -16,7 +16,7 @@ local function debug(msg)
   end
 end
 
-local ModHousekeeper = {
+local modhousekeeper = {
   mods_list_path = _path.code .. "modhousekeeper/mods.list",
   mods_list_local_path = _path.code .. "modhousekeeper/mods.list.local",
   install_path = _path.code,
@@ -64,7 +64,7 @@ local ModHousekeeper = {
 }
 
 -- Extract repository name from git URL
-function ModHousekeeper.extract_repo_name(url)
+function modhousekeeper.extract_repo_name(url)
   -- Handle URLs like https://github.com/user/reponame or git@github.com:user/reponame.git
   local repo = url:match("([^/]+)%.git$") or url:match("([^/]+)$")
   if repo then
@@ -119,8 +119,8 @@ local function parse_csv_line(csv_line)
 end
 
 -- Parse mods.list file
-function ModHousekeeper.parse_mods_list()
-  local path = ModHousekeeper.get_active_mods_list_path()
+function modhousekeeper.parse_mods_list()
+  local path = modhousekeeper.get_active_mods_list_path()
   local f = io.open(path, "r")
   if not f then
     print("modhousekeeper: ERROR - could not open mods list at " .. path)
@@ -152,7 +152,7 @@ function ModHousekeeper.parse_mods_list()
             url = fields[2],
             description = fields[3],
             alt_repos = {},
-            repo_id = ModHousekeeper.extract_repo_name(fields[2]),
+            repo_id = modhousekeeper.extract_repo_name(fields[2]),
             category = current_category,
             installed = false,
             has_update = false,
@@ -183,14 +183,14 @@ function ModHousekeeper.parse_mods_list()
   f:close()
   debug("parsed " .. mod_count .. " mods in " .. tabutil.count(categories) .. " categories")
 
-  ModHousekeeper.categories = categories
-  ModHousekeeper.category_order = category_order
-  ModHousekeeper.all_mods = all_mods
-  ModHousekeeper.build_flat_list()
+  modhousekeeper.categories = categories
+  modhousekeeper.category_order = category_order
+  modhousekeeper.all_mods = all_mods
+  modhousekeeper.build_flat_list()
 end
 
 -- Scan for installed mods not in mods.list
-function ModHousekeeper.scan_local_mods()
+function modhousekeeper.scan_local_mods()
   local pattern = "*/lib/mod.lua"
   local matches = norns.system_glob(_path.code .. pattern)
 
@@ -208,7 +208,7 @@ function ModHousekeeper.scan_local_mods()
     if mod_name and mod_name ~= "modhousekeeper" then
       -- Check if this mod is in our mods.list
       local in_list = false
-      for name, mod_entry in pairs(ModHousekeeper.all_mods) do
+      for name, mod_entry in pairs(modhousekeeper.all_mods) do
         if mod_entry.repo_id == mod_name then
           in_list = true
           break
@@ -234,39 +234,39 @@ function ModHousekeeper.scan_local_mods()
 
   -- Add local mods to categories if any found
   if #local_mods > 0 then
-    ModHousekeeper.categories["Local mods"] = local_mods
+    modhousekeeper.categories["Local mods"] = local_mods
     for _, mod_entry in ipairs(local_mods) do
-      ModHousekeeper.all_mods[mod_entry.name] = mod_entry
+      modhousekeeper.all_mods[mod_entry.name] = mod_entry
     end
     debug("found " .. #local_mods .. " local mods")
   end
 end
 
 -- Build flattened list for display
-function ModHousekeeper.build_flat_list()
+function modhousekeeper.build_flat_list()
   local flat = {}
 
   -- Add settings entry at the top
   table.insert(flat, {type = "settings", name = "Settings"})
 
   -- Add Local mods category first (if it exists)
-  if ModHousekeeper.categories["Local mods"] then
+  if modhousekeeper.categories["Local mods"] then
     table.insert(flat, {type = "category", name = "Local mods"})
-    if not ModHousekeeper.collapsed_categories["Local mods"] then
-      for _, mod_entry in ipairs(ModHousekeeper.categories["Local mods"]) do
+    if not modhousekeeper.collapsed_categories["Local mods"] then
+      for _, mod_entry in ipairs(modhousekeeper.categories["Local mods"]) do
         table.insert(flat, {type = "mod", data = mod_entry})
       end
     end
   end
 
   -- Add other categories in the order they appear in mods.list
-  for _, cat_name in ipairs(ModHousekeeper.category_order) do
-    local mods = ModHousekeeper.categories[cat_name]
+  for _, cat_name in ipairs(modhousekeeper.category_order) do
+    local mods = modhousekeeper.categories[cat_name]
     if mods then
       table.insert(flat, {type = "category", name = cat_name})
 
       -- Only add mods if category is not collapsed
-      if not ModHousekeeper.collapsed_categories[cat_name] then
+      if not modhousekeeper.collapsed_categories[cat_name] then
         for _, mod_entry in ipairs(mods) do
           table.insert(flat, {type = "mod", data = mod_entry})
         end
@@ -274,54 +274,54 @@ function ModHousekeeper.build_flat_list()
     end
   end
 
-  ModHousekeeper.flat_list = flat
+  modhousekeeper.flat_list = flat
   debug("built flat list with " .. #flat .. " items")
 end
 
 -- Check installation status of all mods
-function ModHousekeeper.check_installation_status()
-  for name, mod_entry in pairs(ModHousekeeper.all_mods) do
-    local mod_path = ModHousekeeper.install_path .. mod_entry.repo_id
+function modhousekeeper.check_installation_status()
+  for name, mod_entry in pairs(modhousekeeper.all_mods) do
+    local mod_path = modhousekeeper.install_path .. mod_entry.repo_id
     mod_entry.installed = util.file_exists(mod_path .. "/lib/mod.lua")
   end
-  ModHousekeeper.build_flat_list()
+  modhousekeeper.build_flat_list()
 end
 
 -- Show info popup with auto-dismiss
-function ModHousekeeper.show_info_popup(message)
-  ModHousekeeper.info_popup = {message = message}
+function modhousekeeper.show_info_popup(message)
+  modhousekeeper.info_popup = {message = message}
   mod.menu.redraw()
 
   -- Auto-dismiss after 3 seconds
   clock.run(function()
     clock.sleep(3)
-    ModHousekeeper.info_popup = nil
+    modhousekeeper.info_popup = nil
     mod.menu.redraw()
   end)
 end
 
 -- Update modhousekeeper itself
-function ModHousekeeper.update_self()
-  ModHousekeeper.show_message("Updating modhousekeeper...")
+function modhousekeeper.update_self()
+  modhousekeeper.show_message("Updating modhousekeeper...")
 
   norns.system_cmd("cd " .. _path.code .. "modhousekeeper && git pull 2>&1", function(output)
     if output:match("Already up to date") or output:match("Already up%-to%-date") then
-      ModHousekeeper.show_info_popup("modhousekeeper\nalready up to date")
+      modhousekeeper.show_info_popup("modhousekeeper\nalready up to date")
     elseif output:match("Updating") or output:match("Fast%-forward") then
-      ModHousekeeper.show_info_popup("modhousekeeper\nupdated!\nRestart norns to\napply changes")
+      modhousekeeper.show_info_popup("modhousekeeper\nupdated!\nRestart norns to\napply changes")
     else
-      ModHousekeeper.show_info_popup("Update failed\nCheck matron")
+      modhousekeeper.show_info_popup("Update failed\nCheck matron")
       print("modhousekeeper: update output:\n" .. output)
     end
   end)
 end
 
 -- Check for updates (simplified: just check if git repo can be pulled)
-function ModHousekeeper.check_updates(callback)
+function modhousekeeper.check_updates(callback)
   local checked = 0
   local total = 0
 
-  for name, mod_entry in pairs(ModHousekeeper.all_mods) do
+  for name, mod_entry in pairs(modhousekeeper.all_mods) do
     if mod_entry.installed then
       total = total + 1
     end
@@ -332,9 +332,9 @@ function ModHousekeeper.check_updates(callback)
     return
   end
 
-  for name, mod_entry in pairs(ModHousekeeper.all_mods) do
+  for name, mod_entry in pairs(modhousekeeper.all_mods) do
     if mod_entry.installed then
-      local mod_path = ModHousekeeper.install_path .. mod_entry.repo_id
+      local mod_path = modhousekeeper.install_path .. mod_entry.repo_id
 
       -- Check if updates are available
       norns.system_cmd("cd " .. mod_path .. " && git fetch 2>&1", function(output)
@@ -344,7 +344,7 @@ function ModHousekeeper.check_updates(callback)
 
           checked = checked + 1
           if checked >= total then
-            ModHousekeeper.build_flat_list()
+            modhousekeeper.build_flat_list()
             if callback then callback() end
           end
         end)
@@ -354,17 +354,17 @@ function ModHousekeeper.check_updates(callback)
 end
 
 -- Check for updates and show popup with results
-function ModHousekeeper.check_updates_with_popup()
+function modhousekeeper.check_updates_with_popup()
   -- Count total installed mods
   local total = 0
-  for name, mod_entry in pairs(ModHousekeeper.all_mods) do
+  for name, mod_entry in pairs(modhousekeeper.all_mods) do
     if mod_entry.installed then
       total = total + 1
     end
   end
 
   if total == 0 then
-    ModHousekeeper.show_info_popup("No mods installed")
+    modhousekeeper.show_info_popup("No mods installed")
     return
   end
 
@@ -376,13 +376,13 @@ function ModHousekeeper.check_updates_with_popup()
   }
 
   -- Show initial popup
-  ModHousekeeper.info_popup = {message = "Checking 0/" .. total .. " mods"}
+  modhousekeeper.info_popup = {message = "Checking 0/" .. total .. " mods"}
   mod.menu.redraw()
 
   -- Check each mod
-  for name, mod_entry in pairs(ModHousekeeper.all_mods) do
+  for name, mod_entry in pairs(modhousekeeper.all_mods) do
     if mod_entry.installed then
-      local mod_path = ModHousekeeper.install_path .. mod_entry.repo_id
+      local mod_path = modhousekeeper.install_path .. mod_entry.repo_id
 
       norns.system_cmd("cd " .. mod_path .. " && git fetch 2>&1", function(output)
         norns.system_cmd("cd " .. mod_path .. " && git rev-list HEAD...@{u} --count 2>&1", function(count_output)
@@ -397,13 +397,13 @@ function ModHousekeeper.check_updates_with_popup()
 
           -- Update progress
           if check_state.checked < check_state.total then
-            if ModHousekeeper.info_popup then
-              ModHousekeeper.info_popup.message = "Checking " .. check_state.checked .. "/" .. check_state.total .. " mods"
+            if modhousekeeper.info_popup then
+              modhousekeeper.info_popup.message = "Checking " .. check_state.checked .. "/" .. check_state.total .. " mods"
               mod.menu.redraw()
             end
           else
             -- All done - show results
-            ModHousekeeper.build_flat_list()
+            modhousekeeper.build_flat_list()
             local msg
             if check_state.update_count == 0 then
               msg = "No updates found"
@@ -412,7 +412,7 @@ function ModHousekeeper.check_updates_with_popup()
             else
               msg = check_state.update_count .. " updates found"
             end
-            ModHousekeeper.show_info_popup(msg)
+            modhousekeeper.show_info_popup(msg)
           end
         end)
       end)
@@ -421,57 +421,57 @@ function ModHousekeeper.check_updates_with_popup()
 end
 
 -- Install a mod
-function ModHousekeeper.install_mod(mod_entry, callback, install_url)
+function modhousekeeper.install_mod(mod_entry, callback, install_url)
   local url = install_url or mod_entry.url
-  local install_path = ModHousekeeper.install_path .. mod_entry.repo_id
-  ModHousekeeper.show_message("Installing " .. mod_entry.name .. "...")
+  local install_path = modhousekeeper.install_path .. mod_entry.repo_id
+  modhousekeeper.show_message("Installing " .. mod_entry.name .. "...")
 
   norns.system_cmd("git clone " .. url .. " " .. install_path .. " 2>&1", function(output)
     if util.file_exists(install_path .. "/lib/mod.lua") then
       mod_entry.installed = true
       mod_entry.installed_url = url
-      ModHousekeeper.show_message(mod_entry.name .. " installed!")
+      modhousekeeper.show_message(mod_entry.name .. " installed!")
       debug("installed " .. mod_entry.name .. " from " .. url)
     else
-      ModHousekeeper.show_message("Failed to install " .. mod_entry.name)
+      modhousekeeper.show_message("Failed to install " .. mod_entry.name)
       print("modhousekeeper: install failed - " .. mod_entry.name .. "\n" .. output)
     end
-    ModHousekeeper.build_flat_list()
+    modhousekeeper.build_flat_list()
     if callback then callback() end
   end)
 end
 
 -- Update a mod
-function ModHousekeeper.update_mod(mod_entry, callback)
-  local mod_path = ModHousekeeper.install_path .. mod_entry.repo_id
+function modhousekeeper.update_mod(mod_entry, callback)
+  local mod_path = modhousekeeper.install_path .. mod_entry.repo_id
 
-  ModHousekeeper.show_message("Updating " .. mod_entry.name .. "...")
+  modhousekeeper.show_message("Updating " .. mod_entry.name .. "...")
 
   norns.system_cmd("cd " .. mod_path .. " && git pull 2>&1", function(output)
     mod_entry.has_update = false
-    ModHousekeeper.show_message(mod_entry.name .. " updated!")
-    ModHousekeeper.build_flat_list()
+    modhousekeeper.show_message(mod_entry.name .. " updated!")
+    modhousekeeper.build_flat_list()
     if callback then callback() end
   end)
 end
 
 -- Remove a mod
-function ModHousekeeper.remove_mod(mod_entry, callback)
-  local mod_path = ModHousekeeper.install_path .. mod_entry.repo_id
+function modhousekeeper.remove_mod(mod_entry, callback)
+  local mod_path = modhousekeeper.install_path .. mod_entry.repo_id
 
-  ModHousekeeper.show_message("Removing " .. mod_entry.name .. "...")
+  modhousekeeper.show_message("Removing " .. mod_entry.name .. "...")
 
   norns.system_cmd("rm -rf " .. mod_path .. " 2>&1", function(output)
     mod_entry.installed = false
     mod_entry.has_update = false
-    ModHousekeeper.show_message(mod_entry.name .. " removed!")
-    ModHousekeeper.build_flat_list()
+    modhousekeeper.show_message(mod_entry.name .. " removed!")
+    modhousekeeper.build_flat_list()
     if callback then callback() end
   end)
 end
 
 -- Build action menu for a mod
-function ModHousekeeper.build_action_menu(mod_entry)
+function modhousekeeper.build_action_menu(mod_entry)
   local items = {}
 
   -- Add mod description as info item (full text, no truncation)
@@ -525,7 +525,7 @@ function ModHousekeeper.build_action_menu(mod_entry)
     end
   end
 
-  ModHousekeeper.action_menu = {
+  modhousekeeper.action_menu = {
     mod_entry = mod_entry,
     selected = 2,  -- Start on first action, not description
     items = items
@@ -533,26 +533,26 @@ function ModHousekeeper.build_action_menu(mod_entry)
 end
 
 -- Show temporary message
-function ModHousekeeper.show_message(msg)
-  ModHousekeeper.message = msg
-  if ModHousekeeper.message_timer then
-    clock.cancel(ModHousekeeper.message_timer)
+function modhousekeeper.show_message(msg)
+  modhousekeeper.message = msg
+  if modhousekeeper.message_timer then
+    clock.cancel(modhousekeeper.message_timer)
   end
-  ModHousekeeper.message_timer = clock.run(function()
+  modhousekeeper.message_timer = clock.run(function()
     clock.sleep(2)
-    ModHousekeeper.message = ""
+    modhousekeeper.message = ""
     mod.menu.redraw()
   end)
   mod.menu.redraw()
 end
 
 -- Save settings to file
-function ModHousekeeper.save_settings()
-  local f = io.open(ModHousekeeper.settings_path, "w")
+function modhousekeeper.save_settings()
+  local f = io.open(modhousekeeper.settings_path, "w")
   if not f then return end
   io.output(f)
   io.write("return {\n")
-  for k, v in pairs(ModHousekeeper.settings) do
+  for k, v in pairs(modhousekeeper.settings) do
     local vstr = type(v) == "string" and ("'" .. v .. "'") or tostring(v)
     io.write("  " .. k .. " = " .. vstr .. ",\n")
   end
@@ -562,31 +562,31 @@ function ModHousekeeper.save_settings()
 end
 
 -- Load settings from file
-function ModHousekeeper.load_settings()
-  local f = io.open(ModHousekeeper.settings_path, "r")
+function modhousekeeper.load_settings()
+  local f = io.open(modhousekeeper.settings_path, "r")
   if f then
     io.close(f)
-    ModHousekeeper.settings = dofile(ModHousekeeper.settings_path)
+    modhousekeeper.settings = dofile(modhousekeeper.settings_path)
     debug("settings loaded")
   end
 end
 
 -- Create local mods.list copy if it doesn't exist
-function ModHousekeeper.create_local_mods_list()
-  local f = io.open(ModHousekeeper.mods_list_local_path, "r")
+function modhousekeeper.create_local_mods_list()
+  local f = io.open(modhousekeeper.mods_list_local_path, "r")
   if f then
     io.close(f)
     return  -- Already exists
   end
 
   -- Copy from main mods.list
-  local source = io.open(ModHousekeeper.mods_list_path, "r")
+  local source = io.open(modhousekeeper.mods_list_path, "r")
   if not source then
     print("modhousekeeper: ERROR - could not open mods.list to copy")
     return
   end
 
-  local dest = io.open(ModHousekeeper.mods_list_local_path, "w")
+  local dest = io.open(modhousekeeper.mods_list_local_path, "w")
   if not dest then
     io.close(source)
     print("modhousekeeper: ERROR - could not create mods.list.local")
@@ -604,33 +604,33 @@ function ModHousekeeper.create_local_mods_list()
 end
 
 -- Get the active mods list path based on settings
-function ModHousekeeper.get_active_mods_list_path()
-  if ModHousekeeper.settings.use_local_mods_list then
-    return ModHousekeeper.mods_list_local_path
+function modhousekeeper.get_active_mods_list_path()
+  if modhousekeeper.settings.use_local_mods_list then
+    return modhousekeeper.mods_list_local_path
   else
-    return ModHousekeeper.mods_list_path
+    return modhousekeeper.mods_list_path
   end
 end
 
 -- Initialize mod
-function ModHousekeeper.init()
+function modhousekeeper.init()
   local status, err = pcall(function()
-    ModHousekeeper.load_settings()
-    ModHousekeeper.parse_mods_list()
-    ModHousekeeper.check_installation_status()
-    ModHousekeeper.scan_local_mods()
-    ModHousekeeper.build_flat_list()
+    modhousekeeper.load_settings()
+    modhousekeeper.parse_mods_list()
+    modhousekeeper.check_installation_status()
+    modhousekeeper.scan_local_mods()
+    modhousekeeper.build_flat_list()
   end)
 
   if not status then
     print("modhousekeeper: ERROR during init: " .. tostring(err))
   else
-    debug("init complete - " .. tabutil.count(ModHousekeeper.all_mods) .. " mods, " .. #ModHousekeeper.flat_list .. " items")
+    debug("init complete - " .. tabutil.count(modhousekeeper.all_mods) .. " mods, " .. #modhousekeeper.flat_list .. " items")
   end
 end
 
 -- Hook: system_post_startup
-function ModHousekeeper.system_post_startup()
+function modhousekeeper.system_post_startup()
   print("modhousekeeper: system started")
 end
 
@@ -640,10 +640,10 @@ local menu_ui = {
 }
 
 menu_ui.init = function()
-  ModHousekeeper.check_installation_status()
+  modhousekeeper.check_installation_status()
 
   -- Start animation if not disabled
-  if not ModHousekeeper.settings.disable_animation then
+  if not modhousekeeper.settings.disable_animation then
     menu_ui.animation_active = true
     animation.start(
       function()
@@ -677,78 +677,78 @@ menu_ui.key = function(n, z)
       return
     end
 
-    if ModHousekeeper.action_menu then
+    if modhousekeeper.action_menu then
       -- In action menu
       if n == 2 then
         -- K2: Close action menu
-        ModHousekeeper.action_menu = nil
+        modhousekeeper.action_menu = nil
         mod.menu.redraw()
       elseif n == 3 then
         -- K3: Execute selected action
-        local menu = ModHousekeeper.action_menu
+        local menu = modhousekeeper.action_menu
         local item = menu.items[menu.selected]
 
         if item and (item.type == "action" or item.type == "alt_repo") then
           -- Show confirmation dialog
-          ModHousekeeper.confirm_dialog = {
+          modhousekeeper.confirm_dialog = {
             action = item.action,
             mod_entry = menu.mod_entry,
             url = item.url
           }
-          ModHousekeeper.action_menu = nil
+          modhousekeeper.action_menu = nil
           mod.menu.redraw()
         end
       end
-    elseif ModHousekeeper.confirm_dialog then
+    elseif modhousekeeper.confirm_dialog then
       -- In confirmation dialog
       if n == 2 then
         -- K2: Cancel
-        ModHousekeeper.confirm_dialog = nil
+        modhousekeeper.confirm_dialog = nil
         mod.menu.redraw()
       elseif n == 3 then
         -- K3: Confirm action
-        local dialog = ModHousekeeper.confirm_dialog
-        ModHousekeeper.confirm_dialog = nil
+        local dialog = modhousekeeper.confirm_dialog
+        modhousekeeper.confirm_dialog = nil
 
         if dialog.action == "install" or dialog.action == "reinstall" then
           -- For reinstall, first remove then install
           if dialog.action == "reinstall" then
-            local mod_path = ModHousekeeper.install_path .. dialog.mod_entry.repo_id
+            local mod_path = modhousekeeper.install_path .. dialog.mod_entry.repo_id
             norns.system_cmd("rm -rf " .. mod_path .. " 2>&1", function()
               dialog.mod_entry.installed = false
-              ModHousekeeper.install_mod(dialog.mod_entry, function()
+              modhousekeeper.install_mod(dialog.mod_entry, function()
                 mod.menu.redraw()
               end, dialog.url)
             end)
           else
-            ModHousekeeper.install_mod(dialog.mod_entry, function()
+            modhousekeeper.install_mod(dialog.mod_entry, function()
               mod.menu.redraw()
             end, dialog.url)
           end
         elseif dialog.action == "update" then
-          ModHousekeeper.update_mod(dialog.mod_entry, function()
+          modhousekeeper.update_mod(dialog.mod_entry, function()
             mod.menu.redraw()
           end)
         elseif dialog.action == "remove" then
-          ModHousekeeper.remove_mod(dialog.mod_entry, function()
+          modhousekeeper.remove_mod(dialog.mod_entry, function()
             mod.menu.redraw()
           end)
         end
       end
-    elseif ModHousekeeper.current_screen == "settings" then
+    elseif modhousekeeper.current_screen == "settings" then
       -- Settings screen
       if n == 2 then
         -- K2: Return to mod list
-        ModHousekeeper.current_screen = "mod_list"
+        modhousekeeper.current_screen = "mod_list"
         mod.menu.redraw()
       elseif n == 3 then
         -- K3: Execute trigger action
-        local setting = ModHousekeeper.settings_list[ModHousekeeper.settings_selected]
+        local setting = modhousekeeper.settings_list[modhousekeeper.settings_selected]
         if setting.type == "trigger" then
           if setting.id == "update_modhousekeeper" then
-            ModHousekeeper.update_self()
+            modhousekeeper.update_self()
           elseif setting.id == "check_mod_updates" then
-            ModHousekeeper.check_updates_with_popup()
+            modhousekeeper.check_updates_with_popup()
           end
         end
       end
@@ -759,20 +759,20 @@ menu_ui.key = function(n, z)
         mod.menu.exit()
       elseif n == 3 then
         -- K3: Action on selected item
-        local item = ModHousekeeper.flat_list[ModHousekeeper.selected_index]
+        local item = modhousekeeper.flat_list[modhousekeeper.selected_index]
 
         if item and item.type == "settings" then
           -- Enter settings mode
-          ModHousekeeper.current_screen = "settings"
+          modhousekeeper.current_screen = "settings"
           mod.menu.redraw()
         elseif item and item.type == "category" then
           -- Toggle category collapse
-          ModHousekeeper.collapsed_categories[item.name] = not ModHousekeeper.collapsed_categories[item.name]
-          ModHousekeeper.build_flat_list()
+          modhousekeeper.collapsed_categories[item.name] = not modhousekeeper.collapsed_categories[item.name]
+          modhousekeeper.build_flat_list()
           mod.menu.redraw()
         elseif item and item.type == "mod" then
           -- Open action menu
-          ModHousekeeper.build_action_menu(item.data)
+          modhousekeeper.build_action_menu(item.data)
           mod.menu.redraw()
         end
       end
@@ -781,39 +781,39 @@ menu_ui.key = function(n, z)
 end
 
 menu_ui.enc = function(n, delta)
-  if ModHousekeeper.confirm_dialog then
+  if modhousekeeper.confirm_dialog then
     return  -- Ignore encoder input during confirmation dialog
   end
 
-  if ModHousekeeper.action_menu then
+  if modhousekeeper.action_menu then
     -- Action menu navigation
     if n == 2 then
-      local menu = ModHousekeeper.action_menu
+      local menu = modhousekeeper.action_menu
       menu.selected = util.clamp(menu.selected + delta, 1, #menu.items)
     end
-  elseif ModHousekeeper.current_screen == "mod_list" then
+  elseif modhousekeeper.current_screen == "mod_list" then
     -- Mod list screen encoders
-    if #ModHousekeeper.flat_list == 0 then
+    if #modhousekeeper.flat_list == 0 then
       return  -- Guard against empty list
     end
 
     if n == 2 then
       -- E2: Scroll through list
-      ModHousekeeper.selected_index = util.clamp(
-        ModHousekeeper.selected_index + delta,
+      modhousekeeper.selected_index = util.clamp(
+        modhousekeeper.selected_index + delta,
         1,
-        #ModHousekeeper.flat_list
+        #modhousekeeper.flat_list
       )
 
       -- Adjust scroll offset
-      if ModHousekeeper.selected_index < ModHousekeeper.scroll_offset + 1 then
-        ModHousekeeper.scroll_offset = ModHousekeeper.selected_index - 1
-      elseif ModHousekeeper.selected_index > ModHousekeeper.scroll_offset + ModHousekeeper.max_visible then
-        ModHousekeeper.scroll_offset = ModHousekeeper.selected_index - ModHousekeeper.max_visible
+      if modhousekeeper.selected_index < modhousekeeper.scroll_offset + 1 then
+        modhousekeeper.scroll_offset = modhousekeeper.selected_index - 1
+      elseif modhousekeeper.selected_index > modhousekeeper.scroll_offset + modhousekeeper.max_visible then
+        modhousekeeper.scroll_offset = modhousekeeper.selected_index - modhousekeeper.max_visible
       end
     elseif n == 3 then
       -- E3: Show confirmation dialog for action
-      local item = ModHousekeeper.flat_list[ModHousekeeper.selected_index]
+      local item = modhousekeeper.flat_list[modhousekeeper.selected_index]
       if item and item.type == "mod" then
         local mod_entry = item.data
 
@@ -821,51 +821,51 @@ menu_ui.enc = function(n, delta)
           -- Install or update
           if mod_entry.installed then
             if mod_entry.has_update then
-              ModHousekeeper.confirm_dialog = {action = "update", mod_entry = mod_entry}
+              modhousekeeper.confirm_dialog = {action = "update", mod_entry = mod_entry}
             else
-              ModHousekeeper.show_message(mod_entry.name .. " is up to date")
+              modhousekeeper.show_message(mod_entry.name .. " is up to date")
             end
           else
-            ModHousekeeper.confirm_dialog = {action = "install", mod_entry = mod_entry}
+            modhousekeeper.confirm_dialog = {action = "install", mod_entry = mod_entry}
           end
         else
           -- Remove
           if mod_entry.installed then
-            ModHousekeeper.confirm_dialog = {action = "remove", mod_entry = mod_entry}
+            modhousekeeper.confirm_dialog = {action = "remove", mod_entry = mod_entry}
           else
-            ModHousekeeper.show_message(mod_entry.name .. " not installed")
+            modhousekeeper.show_message(mod_entry.name .. " not installed")
           end
         end
       end
     end
 
-  elseif ModHousekeeper.current_screen == "settings" then
+  elseif modhousekeeper.current_screen == "settings" then
     -- Settings screen encoders
     if n == 2 then
       -- E2: Navigate settings
-      ModHousekeeper.settings_selected = util.clamp(
-        ModHousekeeper.settings_selected + delta,
+      modhousekeeper.settings_selected = util.clamp(
+        modhousekeeper.settings_selected + delta,
         1,
-        #ModHousekeeper.settings_list
+        #modhousekeeper.settings_list
       )
     elseif n == 3 then
       -- E3: Toggle or trigger setting
-      local setting = ModHousekeeper.settings_list[ModHousekeeper.settings_selected]
+      local setting = modhousekeeper.settings_list[modhousekeeper.settings_selected]
       if setting.type == "toggle" then
-        ModHousekeeper.settings[setting.id] = not ModHousekeeper.settings[setting.id]
+        modhousekeeper.settings[setting.id] = not modhousekeeper.settings[setting.id]
 
         -- Handle special actions for certain settings
-        if setting.id == "use_local_mods_list" and ModHousekeeper.settings[setting.id] then
-          ModHousekeeper.create_local_mods_list()
+        if setting.id == "use_local_mods_list" and modhousekeeper.settings[setting.id] then
+          modhousekeeper.create_local_mods_list()
         end
 
-        ModHousekeeper.save_settings()
+        modhousekeeper.save_settings()
       elseif setting.type == "trigger" then
         -- Execute trigger action
         if setting.id == "update_modhousekeeper" then
-          ModHousekeeper.update_self()
+          modhousekeeper.update_self()
         elseif setting.id == "check_mod_updates" then
-          ModHousekeeper.check_updates_with_popup()
+          modhousekeeper.check_updates_with_popup()
         end
       end
     end
@@ -884,7 +884,7 @@ local function draw_title_bar()
   -- Title text centered
   screen.level(15)
   screen.move(64, 8)
-  screen.text_center("modhousekeeper")
+  screen.text_center("MODHOUSEKEEPER")
 end
 
 -- Draw mod list screen
@@ -892,7 +892,7 @@ local function draw_mod_list()
   draw_title_bar()
 
   -- Check if list is empty
-  if #ModHousekeeper.flat_list == 0 then
+  if #modhousekeeper.flat_list == 0 then
     screen.level(8)
     screen.move(64, 35)
     screen.text_center("No mods found")
@@ -902,14 +902,14 @@ local function draw_mod_list()
   end
 
   -- Calculate scroll bounds
-  local start_idx = ModHousekeeper.scroll_offset + 1
-  local end_idx = math.min(start_idx + ModHousekeeper.max_visible - 1, #ModHousekeeper.flat_list)
+  local start_idx = modhousekeeper.scroll_offset + 1
+  local end_idx = math.min(start_idx + modhousekeeper.max_visible - 1, #modhousekeeper.flat_list)
 
   -- Draw visible items
   local y = 18
   for i = start_idx, end_idx do
-    local item = ModHousekeeper.flat_list[i]
-    local is_selected = (i == ModHousekeeper.selected_index)
+    local item = modhousekeeper.flat_list[i]
+    local is_selected = (i == modhousekeeper.selected_index)
 
     if item.type == "settings" then
       screen.level(is_selected and 15 or 10)
@@ -918,7 +918,7 @@ local function draw_mod_list()
     elseif item.type == "category" then
       screen.level(is_selected and 15 or 10)
       screen.move(2, y)
-      local collapsed = ModHousekeeper.collapsed_categories[item.name]
+      local collapsed = modhousekeeper.collapsed_categories[item.name]
       local indicator = collapsed and "+" or "-"
       screen.text(indicator .. " " .. item.name)
     else
@@ -946,13 +946,13 @@ local function draw_mod_list()
   end
 
   -- Draw message if present at bottom
-  if ModHousekeeper.message ~= "" then
+  if modhousekeeper.message ~= "" then
     screen.level(0)
     screen.rect(0, 53, 128, 11)
     screen.fill()
     screen.level(15)
     screen.move(64, 60)
-    screen.text_center(ModHousekeeper.message)
+    screen.text_center(modhousekeeper.message)
   end
 end
 
@@ -1012,7 +1012,7 @@ end
 
 -- Draw action menu pop-up
 local function draw_action_menu()
-  local menu = ModHousekeeper.action_menu
+  local menu = modhousekeeper.action_menu
   local mod_entry = menu.mod_entry
 
   -- Calculate required height
@@ -1123,8 +1123,8 @@ local function draw_settings()
   draw_title_bar()
 
   local y = 20
-  for i, setting in ipairs(ModHousekeeper.settings_list) do
-    local is_selected = (i == ModHousekeeper.settings_selected)
+  for i, setting in ipairs(modhousekeeper.settings_list) do
+    local is_selected = (i == modhousekeeper.settings_selected)
     screen.level(is_selected and 15 or 8)
 
     -- Setting name
@@ -1133,7 +1133,7 @@ local function draw_settings()
 
     -- Setting value/indicator
     if setting.type == "toggle" then
-      local value_text = ModHousekeeper.settings[setting.id] and "ON" or "OFF"
+      local value_text = modhousekeeper.settings[setting.id] and "ON" or "OFF"
       screen.move(126, y)
       screen.text_right(value_text)
     elseif setting.type == "trigger" then
@@ -1155,17 +1155,17 @@ menu_ui.redraw = function()
   end
 
   -- Draw base screen
-  if ModHousekeeper.current_screen == "mod_list" then
+  if modhousekeeper.current_screen == "mod_list" then
     draw_mod_list()
-  elseif ModHousekeeper.current_screen == "settings" then
+  elseif modhousekeeper.current_screen == "settings" then
     draw_settings()
   end
 
   -- Draw overlays
-  if ModHousekeeper.action_menu then
+  if modhousekeeper.action_menu then
     draw_action_menu()
-  elseif ModHousekeeper.confirm_dialog then
-    local dialog = ModHousekeeper.confirm_dialog
+  elseif modhousekeeper.confirm_dialog then
+    local dialog = modhousekeeper.confirm_dialog
     local action_text = dialog.action:upper()
 
     -- Semi-transparent overlay
@@ -1187,10 +1187,10 @@ menu_ui.redraw = function()
     screen.level(15)
     screen.move(64, 46)
     screen.text_center("K2: No    K3: Yes")
-  elseif ModHousekeeper.info_popup then
+  elseif modhousekeeper.info_popup then
     -- Info popup
     local lines = {}
-    for line in ModHousekeeper.info_popup.message:gmatch("[^\n]+") do
+    for line in modhousekeeper.info_popup.message:gmatch("[^\n]+") do
       table.insert(lines, line)
     end
 
@@ -1217,12 +1217,12 @@ menu_ui.redraw = function()
 end
 
 -- Initialize the mod
-ModHousekeeper.init()
+modhousekeeper.init()
 
 -- Register menu UI
 mod.menu.register(mod.this_name, menu_ui)
 
 -- Register hooks
-mod.hook.register("system_post_startup", "modhousekeeper_system_post_startup", ModHousekeeper.system_post_startup)
+mod.hook.register("system_post_startup", "modhousekeeper_system_post_startup", modhousekeeper.system_post_startup)
 
 debug("mod loaded")

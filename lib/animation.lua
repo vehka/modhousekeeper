@@ -1,5 +1,7 @@
 -- animation.lua
 -- Lighthouse starting animation for modhousekeeper
+-- Based on Tobias V. Langhoff's tweetcart:
+--  https://x.com/Spug/status/1091093446545367040
 
 -- Debug mode - set to false to disable debug messages
 local DEBUG = false
