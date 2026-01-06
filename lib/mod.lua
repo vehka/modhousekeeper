@@ -1081,11 +1081,11 @@ local function draw_action_menu()
   end
 
   -- Calculate scroll offset to keep selected item visible
+  -- Find the last line of the selected item to ensure all lines are visible
   local selected_line = 1
   for i, line in ipairs(rendered_lines) do
     if line.item_idx == menu.selected then
       selected_line = i
-      break
     end
   end
 
