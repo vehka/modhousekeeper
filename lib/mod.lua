@@ -1048,7 +1048,8 @@ local function calculate_menu_height(items)
     elseif item.type == "alt_repo" then
       total_lines = total_lines + 1
       if item.description then
-        total_lines = total_lines + 1
+        local wrapped = wrap_text(item.description, 19)
+        total_lines = total_lines + #wrapped
       end
     end
     total_lines = total_lines + 0.25  -- spacing
@@ -1117,12 +1118,16 @@ local function draw_action_menu()
         item_idx = i
       })
       if item.description then
-        table.insert(rendered_lines, {
-          text = item.description,
-          level = 8,
-          indent = 4,
-          item_idx = i
-        })
+        -- Wrap description to fit within popup (accounting for indent)
+        local wrapped = wrap_text(item.description, 19)
+        for _, line in ipairs(wrapped) do
+          table.insert(rendered_lines, {
+            text = line,
+            level = 8,
+            indent = 4,
+            item_idx = i
+          })
+        end
       end
     end
   end
