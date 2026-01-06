@@ -488,13 +488,59 @@ function modhousekeeper.update_mod(mod_entry, callback)
   end)
 end
 
+-- Validate and construct a safe mod path for deletion
+-- Returns: validated_path, error_message (error_message is nil on success)
+local function get_safe_mod_path(repo_id)
+  -- Safety checks before deletion
+  if not repo_id or repo_id == "" then
+    return nil, "invalid repo_id"
+  end
+
+  -- Validate repo_id contains only safe characters (alphanumeric, dash, underscore, dot)
+  if not repo_id:match("^[%w%-_%.]+$") then
+    return nil, "repo_id contains unsafe characters: " .. repo_id
+  end
+
+  -- Prevent path traversal
+  if repo_id:match("%.%.") or repo_id:match("^/") then
+    return nil, "repo_id contains path traversal: " .. repo_id
+  end
+
+  local mod_path = modhousekeeper.install_path .. repo_id
+
+  -- Verify path is within the code directory (additional safety check)
+  local escaped_install_path = modhousekeeper.install_path:gsub("[%-%.%+%[%]%(%)%$%^%%%?%*]", "%%%1")
+  if not mod_path:match("^" .. escaped_install_path) then
+    return nil, "mod path is outside code directory: " .. mod_path
+  end
+
+  return mod_path, nil
+end
+
+-- Shell-escape a path for safe use in system commands
+local function shell_escape(path)
+  return "'" .. path:gsub("'", "'\\''") .. "'"
+end
+
 -- Remove a mod
 function modhousekeeper.remove_mod(mod_entry, callback)
-  local mod_path = modhousekeeper.install_path .. mod_entry.repo_id
+  local mod_path, err = get_safe_mod_path(mod_entry.repo_id)
+  if not mod_path then
+    print("modhousekeeper: ERROR - " .. err)
+    modhousekeeper.show_message("Error: invalid mod path")
+    return
+  end
+
+  -- Verify path exists
+  if not util.file_exists(mod_path) then
+    print("modhousekeeper: ERROR - mod path does not exist: " .. mod_path)
+    modhousekeeper.show_message("Error: mod not found")
+    return
+  end
 
   modhousekeeper.show_message("Removing " .. mod_entry.name .. "...")
 
-  norns.system_cmd("rm -rf " .. mod_path .. " 2>&1", function(output)
+  norns.system_cmd("rm -rf " .. shell_escape(mod_path) .. " 2>&1", function(output)
     mod_entry.installed = false
     mod_entry.has_update = false
     modhousekeeper.show_message(mod_entry.name .. " removed!")
@@ -753,8 +799,14 @@ menu_ui.key = function(n, z)
         if dialog.action == "install" or dialog.action == "reinstall" then
           -- For reinstall, first remove then install
           if dialog.action == "reinstall" then
-            local mod_path = modhousekeeper.install_path .. dialog.mod_entry.repo_id
-            norns.system_cmd("rm -rf " .. mod_path .. " 2>&1", function()
+            local mod_path, err = get_safe_mod_path(dialog.mod_entry.repo_id)
+            if not mod_path then
+              print("modhousekeeper: ERROR - " .. err)
+              modhousekeeper.show_message("Error: invalid mod path")
+              modhousekeeper.confirm_dialog = nil
+              return
+            end
+            norns.system_cmd("rm -rf " .. shell_escape(mod_path) .. " 2>&1", function()
               dialog.mod_entry.installed = false
               modhousekeeper.install_mod(dialog.mod_entry, function()
                 mod.menu.redraw()
