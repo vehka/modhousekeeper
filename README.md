@@ -22,37 +22,36 @@ A norns mod manager for the installation, updating, and removal of mods.
    ```
 
 2. Enable the mod:
-   - Navigate to SYSTEM > MODS on your Norns
-   - Enable "modhousekeeper" by turning encoder three clockwise
+   - Navigate to SYSTEM > MODS
+   - Enable "modhousekeeper" by turning E3 clockwise
    - Restart Norns
 
 ## Usage
 
 ### Opening the mod manager
 
-From your Norns hardware:
 1. Navigate to **SYSTEM > MODS**
-2. Select **"modhousekeeper"** and press button three
+2. Select **"modhousekeeper"** and press K3
 
 ### Controls
 
 **Mod List:**
 
-- **E2** (Encoder 2): Scroll through list
-- **K2** (Key 2): Exit to mods menu
-- **K3** (Key 3): Open action menu (on mods) / Enter settings (on ▦ Settings)
+- **E2**: Scroll through list
+- **K2**: Exit to mods menu
+- **K3**: Open action menu (on mods) / Enter settings (on ▦ Settings)
 
 **Action Menu:**
 
-- **E2** (Encoder 2): Navigate menu options
-- **K2** (Key 2): Close menu
-- **K3** (Key 3): Execute selected action
+- **E2**: Navigate menu options
+- **K2**: Close menu
+- **K3**: Execute selected action
 
 **Settings:**
 
-- **E2** (Encoder 2): Navigate settings
-- **E3** (Encoder 3): Toggle setting value
-- **K2** (Key 2): Return to mod list
+- **E2**: Navigate settings
+- **E3**: Toggle setting value
+- **K2**: Return to mod list
 
 ### Action Menu
 
@@ -74,7 +73,7 @@ Each alternative repository entry includes a description, defined in the main mo
 
 Access the settings screen by scrolling to **▦ Settings** at the top of the mod list and pressing **K3**. Available settings:
 
-- **Disable start animation**: Disable the startup animation (feature not yet implemented)
+- **Disable start animation**: Disable the startup animation
 - **Use local mods.list**: When enabled, uses `mods.list.local` instead of `mods.list`
   - This prevents git merge conflicts when pulling updates to modhousekeeper
   - The first time you enable this, a local copy is automatically created
