@@ -895,8 +895,15 @@ menu_ui.enc = function(n, delta)
         modhousekeeper.settings[setting.id] = not modhousekeeper.settings[setting.id]
 
         -- Handle special actions for certain settings
-        if setting.id == "use_local_mods_list" and modhousekeeper.settings[setting.id] then
-          modhousekeeper.create_local_mods_list()
+        if setting.id == "use_local_mods_list" then
+          if modhousekeeper.settings[setting.id] then
+            modhousekeeper.create_local_mods_list()
+          end
+          -- Reload mods list from the newly selected source
+          modhousekeeper.parse_mods_list()
+          modhousekeeper.check_installation_status()
+          modhousekeeper.build_flat_list()
+          modhousekeeper.show_message("Mods list reloaded")
         end
 
         modhousekeeper.save_settings()
