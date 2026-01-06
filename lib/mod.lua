@@ -479,18 +479,25 @@ function modhousekeeper.build_action_menu(mod_entry)
 
   -- Add primary action
   if mod_entry.installed then
+    -- If installed from alt repo, offer to reinstall from main
+    local is_alt_installed = mod_entry.installed_url and mod_entry.installed_url ~= mod_entry.url
+
     if mod_entry.has_update then
       table.insert(items, {type = "action", text = "Update", action = "update", url = mod_entry.url})
     end
-    table.insert(items, {type = "action", text = "Remove", action = "remove"})
 
-    -- If installed from alt repo, offer to reinstall from main
-    local is_alt_installed = mod_entry.installed_url and mod_entry.installed_url ~= mod_entry.url
+    -- Show appropriate remove text based on what's installed
+    if is_alt_installed then
+      table.insert(items, {type = "action", text = "Remove alt version", action = "remove"})
+    else
+      table.insert(items, {type = "action", text = "Remove", action = "remove"})
+    end
+
     if is_alt_installed then
       table.insert(items, {
         type = "alt_repo",
-        text = "Reinstall from",
-        description = "main",
+        text = "Reinstall",
+        description = "main version",
         action = "reinstall",
         url = mod_entry.url
       })
@@ -502,7 +509,7 @@ function modhousekeeper.build_action_menu(mod_entry)
       if not (mod_entry.installed_url == alt.url) then
         table.insert(items, {
           type = "alt_repo",
-          text = "Reinstall from",
+          text = "Reinstall",
           description = alt.description,
           action = "reinstall",
           url = alt.url
