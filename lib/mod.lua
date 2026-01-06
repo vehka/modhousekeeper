@@ -1190,6 +1190,16 @@ local function draw_settings()
 
     y = y + 12
   end
+
+  -- Draw message if present at bottom
+  if modhousekeeper.message ~= "" then
+    screen.level(0)
+    screen.rect(0, 53, 128, 11)
+    screen.fill()
+    screen.level(15)
+    screen.move(64, 60)
+    screen.text_center(modhousekeeper.message)
+  end
 end
 
 menu_ui.redraw = function()
