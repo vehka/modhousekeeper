@@ -420,13 +420,46 @@ function modhousekeeper.check_updates_with_popup()
   end
 end
 
+-- Parse GitHub URL to extract repo URL and branch name
+-- Returns: repo_url, branch_name (branch_name is nil if no branch specified)
+local function parse_github_url(url)
+  -- Check for /tree/branch-name format
+  local repo_url, branch = url:match("^(https?://[^/]+/[^/]+/[^/]+)/tree/(.+)$")
+  if repo_url and branch then
+    return repo_url, branch
+  end
+
+  -- Check for #branch-name format
+  repo_url, branch = url:match("^(https?://.-)#(.+)$")
+  if repo_url and branch then
+    return repo_url, branch
+  end
+
+  -- No branch specified, return the URL as-is
+  return url, nil
+end
+
 -- Install a mod
 function modhousekeeper.install_mod(mod_entry, callback, install_url)
   local url = install_url or mod_entry.url
   local install_path = modhousekeeper.install_path .. mod_entry.repo_id
+
+  -- Parse URL to check for branch specification
+  local repo_url, branch = parse_github_url(url)
+
   modhousekeeper.show_message("Installing " .. mod_entry.name .. "...")
 
-  norns.system_cmd("git clone " .. url .. " " .. install_path .. " 2>&1", function(output)
+  local clone_cmd
+  if branch then
+    -- Clone specific branch
+    clone_cmd = "git clone -b " .. branch .. " " .. repo_url .. " " .. install_path .. " 2>&1"
+    debug("cloning " .. repo_url .. " branch " .. branch)
+  else
+    -- Clone default branch
+    clone_cmd = "git clone " .. repo_url .. " " .. install_path .. " 2>&1"
+  end
+
+  norns.system_cmd(clone_cmd, function(output)
     if util.file_exists(install_path .. "/lib/mod.lua") then
       mod_entry.installed = true
       mod_entry.installed_url = url

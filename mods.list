@@ -7,7 +7,7 @@ iiitoii, https://github.com/frederickk/iiitoii, iii community scripts ported to 
 
 # FX
 
-FX, https://github.com/sixolet/fx, Multi-effects processor for norns, https://github.com/vehka/fx, serial insert effects
+FX, https://github.com/sixolet/fx, Multi-effects processor for norns, https://github.com/vehka/fx, serial insert effects, https://github.com/vehka/fx/tree/feature/pre-post-insert-sends, new feature
 FX Bitcrusher, https://github.com/vehka/fx_bitcrusher, bitcrusher from the pedalboard script
 FX Delay, https://github.com/sixolet/fx_delay, basic delay with a very gentle filter on it
 FX Distortion, https://github.com/vehka/fx_distortion, distortion from the pedalboard script
