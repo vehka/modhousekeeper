@@ -34,7 +34,7 @@ return {
     -- (arcify removed: it is a Lua library (lib/arcify.lua), not a mod -- no lib/mod.lua)
     { name = "Combiner", url = "https://github.com/dstroud/combiner", description = "Configure & aggregate multiple grids", category = "Arc & Grid" },
     { name = "gridkeys", url = "https://github.com/p3r7/gridkeys", description = "Use grid as MIDI keyboard anywhere", category = "Arc & Grid" },
-    { name = "iiitoii", url = "https://github.com/frederickk/iiitoii", description = "iii community scripts ported to norns + crow", category = "Arc & Grid" },
+    { name = "iiitoii", url = "https://github.com/andr-ew/iiitoii", description = "iii community scripts ported to norns + crow", category = "Arc & Grid" },
 
     -- FX
     { name = "FX", url = "https://github.com/sixolet/fx", description = "Multi-effects processor for norns", category = "FX",
@@ -55,10 +55,8 @@ return {
     { name = "changez", url = "https://github.com/cachilders/changez", description = "convert program changes to cc", category = "MIDI & OSC" },
     { name = "CyberMIDI", url = "https://github.com/dstroud/cybermidi", description = "Send MIDI between Norns over IP", category = "MIDI & OSC" },
     { name = "mididi", url = "https://github.com/dwtong/midididi", description = "record and play back midi cc loops", category = "MIDI & OSC" },
-    { name = "Midigrid", url = "https://github.com/jaggednz/midigrid", description = "Use launchpads & MIDI controllers as grid", category = "MIDI & OSC",
-      alts = {
-        { url = "https://github.com/miker2049/midigrid", description = "miker2049 fork" },
-      } },
+    { name = "Midigrid", url = "https://github.com/jaggednz/midigrid", description = "Use launchpads & MIDI controllers as grid", category = "MIDI & OSC" },
+    -- (miker2049/midigrid alt dropped: that fork is a library, no lib/mod.lua)
     { name = "midikit", url = "https://github.com/xmacex/midikit", description = "MIDI CC output from mod matrix", category = "MIDI & OSC" },
     { name = "mod_clock_div", url = "https://github.com/tomwaters/mod_clock_div", description = "output divisions of the norns clock as midi note on events", category = "MIDI & OSC" },
     { name = "osc-mod", url = "https://github.com/jaseknighter/osc-mod", description = "control the params from any norns script via osc", category = "MIDI & OSC" },
@@ -74,10 +72,11 @@ return {
 
     -- Network & Streaming
     { name = "broadcast", url = "https://github.com/schollz/broadcast", description = "Stream audio to norns.online", category = "Network & Streaming" },
-    { name = "ndi-mod", url = "https://github.com/Dewb/ndi-mod", description = "Share norns screen over network via NDI", category = "Network & Streaming" },
+    -- ndi-mod (Dewb/ndi-mod) omitted: its mod.lua lives at mod/lib/mod.lua and it
+    -- needs a native NDI build, so a plain git clone can't install it as a mod.
     { name = "QRemote", url = "https://github.com/Quixotic7/qremote", description = "Remote control for norns", category = "Network & Streaming" },
-    { name = "receiver", url = "https://github.com/schollz/norns-receiver", description = "Receive broadcasts from norns users", category = "Network & Streaming" },
-    { name = "semiconductor", url = "https://github.com/jaseknighter/semiconductor", description = "Norns ensemble performance script", category = "Network & Streaming" },
+    { name = "receiver", url = "https://github.com/markijzerman/receiver", description = "Receive broadcasts from norns users", category = "Network & Streaming" },
+    { name = "semiconductor", url = "https://github.com/jaseknighter/norns_semiconductor", description = "Norns ensemble performance script", category = "Network & Streaming" },
 
     -- Nota Bene (nb)
     { name = "tg", url = "https://github.com/sixolet/tg", description = "Access to nb voices directly from the params menu", category = "Nota Bene (nb)" },
