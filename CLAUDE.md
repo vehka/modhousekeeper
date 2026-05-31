@@ -85,50 +85,31 @@ and most sixolet nb voices don't), so the `norns-` dir fix relies on explicit
 
 Not yet smoke-tested on hardware: menu flow, `refresh_catalog` curl, maiden remove.
 
-## Phase 3 (planned)
+## Phase 3 (done 2026-05-31)
 
-On-device testing (2026-05-31): install/remove work for some mods (gridkeys OK),
-but **arcify and broadcast fail to install**, and the catalog-refresh popup says
-"350 entries" (it's counting all scripts, not mods). Phase 3:
+On-device testing found install failures. Root cause in every case was **stale
+data in `mods.lua`**, not the install code (install_mod correctly requires
+`<dir>/lib/mod.lua` after clone). Fixes:
 
-0. **Diagnose & fix install failures** (arcify, broadcast; gridkeys works):
-   - `install_mod` declares success only if `<install_dir>/lib/mod.lua` exists
-     after `git clone`, and prints the git output to matron on failure — check
-     matron for the exact cause first.
-   - Leading hypotheses: (a) **arcify is a library, not a mod** — mimetaur/arcify
-     ships `arcify.lua` at the root, no `lib/mod.lua`, so it can never satisfy the
-     check (data error inherited from the old list → remove it, or stop treating
-     non-mods as installable). (b) The two failures (arcify, broadcast) are the
-     ones whose `install_dir` ≠ URL basename (arcify via catalog project_name,
-     broadcast via explicit `dir`), whereas gridkeys was unmatched → basename;
-     verify the clone target dir is correct and not pre-existing (a non-empty
-     `broadcast` dir makes `git clone` fail). Confirm schollz/norns-broadcast
-     actually has `lib/mod.lua` and on which default branch.
-   - Consider: detect "cloned but not a mod" distinctly from "clone failed", and
-     clean up a partial/non-mod clone instead of leaving it on disk.
-1. **Catalog-refresh messaging / meaning** — the popup shouldn't imply 350 mods.
-   community.json is all scripts+mods (~19 tagged "mod"); the catalog is used to
-   resolve install dirs + enrich descriptions for *curated* mods, not to count
-   mods. Report something honest (e.g. "Catalog updated") and/or the number of
-   curated mods matched.
-2. **Fix mod-list scrolling** — in `menu_ui.enc` (E2 handler) and `draw_mod_list`
-   in `lib/mod.lua`:
-   - *Top not reachable:* after scrolling up to the title, the category/Settings
-     rows don't scroll back onto the screen. `flat_list[1]` is the Settings entry
-     and category headers are list items too — check the `scroll_offset`
-     clamping (`selected_index < scroll_offset + 1` branch) so the top of the
-     list is always shown when `selected_index` reaches 1.
-   - *Bottom occluded:* scrolling to the end hides the last mod behind the bottom
-     message bar. Layout today: rows at y = 19, +9 each, `max_visible = 5` (so
-     19/28/37/46/55); the message bar is `rect(0, 53, 128, 11)`. The 5th row
-     (y55) sits under the bar. Reconcile row count / positions with the bar
-     (e.g. reserve its space, drop to 4 visible when a message shows, and/or add
-     a scroll-position indicator).
-3. **Browse community mods** — a browsable view of `community.json` entries
-   tagged `"mod"` that are NOT already in `mods.lua`, installable without
-   hand-editing. The catalog is already loaded (`catalog.entries`,
-   `catalog.lookup`); needs a new UI mode and a way to mark/skip ones already
-   curated. (Caveat: the `"mod"` tag set is small and imperfect — ~19 entries.)
-4. **Visual install vs. enable** — item 10 done properly: redesign the ○◉◆
-   install indicators so install state can't be mistaken for norns' own
-   enable-dot in SYSTEM > MODS.
+- **arcify** removed -- `mimetaur/arcify` is a Lua *library* (`lib/arcify.lua`,
+  no `lib/mod.lua`), so it installs but never shows in the MODS menu.
+- **broadcast** URL corrected `schollz/norns-broadcast` (404) -> `schollz/broadcast`.
+- **receiver** URL corrected to `markijzerman/receiver` (the schollz ones 404).
+- **iiitoii** URL corrected `frederickk/iiitoii` (404) -> `andr-ew/iiitoii`.
+- **semiconductor** URL corrected `jaseknighter/semiconductor` (404) ->
+  `jaseknighter/norns_semiconductor`.
+- **midigrid** miker2049 alt dropped -- that fork is a library, no `lib/mod.lua`.
+- **ndi-mod** removed -- real mod but `mod.lua` is at `mod/lib/mod.lua` and it
+  needs a native NDI build, so a plain `git clone` can't install it.
+
+**`tools/validate_mods.lua`** added: a maintenance util (NOT loaded by the mod)
+that loads `mods.lua` and checks every entry (+ alts) on GitHub for `lib/mod.lua`
+on its default branch. Prefers the `gh` CLI (auth -> high rate limit), falls back
+to unauthenticated curl. Run `lua tools/validate_mods.lua` -- exit 0 = all valid,
+1 = problems listed. After the fixes above it passes clean. Re-run it whenever
+editing `mods.lua`.
+
+Note: the catalog-refresh popup reporting "350 entries" is cosmetic (that is the
+community.json size) and was not flagged by the user as a problem; left as-is.
+Scrolling, "browse community mods", and install-vs-enable indicators were
+considered but the user confirmed they are NOT needed.
