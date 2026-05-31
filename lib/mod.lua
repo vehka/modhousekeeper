@@ -6,6 +6,7 @@ local mod = require 'core/mods'
 local util = require 'util'
 local tabutil = require 'tabutil'
 local animation = include('modhousekeeper/lib/animation')
+local catalog = include('modhousekeeper/lib/catalog')
 
 -- Debug mode - set to false to disable debug messages
 local DEBUG = false
@@ -17,8 +18,8 @@ local function debug(msg)
 end
 
 local modhousekeeper = {
-  mods_list_path = _path.code .. "modhousekeeper/mods.list",
-  mods_list_local_path = _path.code .. "modhousekeeper/mods.list.local",
+  mods_path = _path.code .. "modhousekeeper/mods.lua",
+  mods_local_path = _path.code .. "modhousekeeper/mods.local.lua",
   install_path = _path.code,
   settings_path = _path.data .. "modhousekeeper_settings.lua",
 
@@ -29,11 +30,10 @@ local modhousekeeper = {
   -- Settings
   settings = {
     disable_animation = false,
-    use_local_mods_list = false,
   },
   settings_list = {
     {id = "disable_animation", name = "Disable start animation", type = "toggle"},
-    {id = "use_local_mods_list", name = "Use local mods.list", type = "toggle"},
+    {id = "refresh_catalog", name = "Refresh mod catalog", type = "trigger"},
     {id = "update_modhousekeeper", name = "Update modhousekeeper", type = "trigger"},
     {id = "check_mod_updates", name = "Check for mod updates", type = "trigger"},
   },
@@ -100,119 +100,117 @@ local function get_mod_dir(mod_entry)
   return mod_entry.install_dir or mod_entry.repo_id
 end
 
--- Parse CSV line with support for quoted fields
-local function parse_csv_line(csv_line)
-  local fields = {}
-  local current_field = ""
-  local in_quotes = false
-  local i = 1
+-- Resolve a raw mods.lua entry into a full mod_entry, using the catalog to fill
+-- in the canonical install dir and (when missing) the description.
+local function resolve_entry(raw)
+  local cat_entry = catalog.lookup(raw.url)
 
-  while i <= #csv_line do
-    local char = csv_line:sub(i, i)
-
-    if in_quotes then
-      if char == '"' then
-        -- Check if it's an escaped quote (doubled "")
-        if csv_line:sub(i+1, i+1) == '"' then
-          current_field = current_field .. '"'
-          i = i + 1  -- Skip the second quote
-        else
-          -- End of quoted field
-          in_quotes = false
-        end
-      else
-        current_field = current_field .. char
-      end
-    else
-      if char == '"' then
-        -- Start of quoted field
-        in_quotes = true
-      elseif char == ',' then
-        -- Field separator - save current field and trim whitespace
-        table.insert(fields, (current_field:gsub("^%s*(.-)%s*$", "%1")))
-        current_field = ""
-      else
-        current_field = current_field .. char
-      end
-    end
-
-    i = i + 1
+  -- Canonical install directory: explicit `dir` wins, then the catalog's
+  -- project_name (what maiden/norns.community installs into), then the URL
+  -- basename as a last resort.
+  local install_dir = raw.dir
+  if not install_dir and cat_entry and cat_entry.project_name then
+    install_dir = cat_entry.project_name
+  end
+  if not install_dir then
+    install_dir = modhousekeeper.extract_repo_name(raw.url)
   end
 
-  -- Add the last field
-  table.insert(fields, (current_field:gsub("^%s*(.-)%s*$", "%1")))
+  local description = raw.description
+  if (not description or description == "") and cat_entry then
+    description = cat_entry.description
+  end
 
-  return fields
+  local alts = {}
+  if raw.alts then
+    for _, a in ipairs(raw.alts) do
+      table.insert(alts, {url = a.url, description = a.description})
+    end
+  end
+
+  return {
+    name = raw.name,
+    url = raw.url,
+    description = description or "",
+    alt_repos = alts,
+    repo_id = modhousekeeper.extract_repo_name(raw.url),
+    install_dir = install_dir,
+    category = raw.category,
+    installed = false,
+    has_update = false,
+    installed_url = nil,  -- Track which URL is actually installed
+  }
 end
 
--- Parse mods.list file
-function modhousekeeper.parse_mods_list()
-  local path = modhousekeeper.get_active_mods_list_path()
-  local f = io.open(path, "r")
-  if not f then
-    print("modhousekeeper: ERROR - could not open mods list at " .. path)
-    return
-  end
-
-  local current_category = nil
+-- Load the curated mod list (mods.lua) plus the optional user overlay
+-- (mods.local.lua), resolving each entry against the catalog.
+function modhousekeeper.load_mods()
   local categories = {}
   local category_order = {}
   local all_mods = {}
-  local mod_count = 0
 
-  for line in f:lines() do
-    if line:match("%S") then
-      local category = line:match("^#%s*(.+)")
-      if category then
-        current_category = category
-        categories[current_category] = {}
-        table.insert(category_order, current_category)
-        debug("found category: " .. category)
-      else
-        local fields = parse_csv_line(line)
-        debug("parsed line: " .. line)
-        debug("  -> " .. #fields .. " fields: [" .. table.concat(fields, "] [") .. "]")
-
-        if #fields >= 3 and current_category then
-          local mod_entry = {
-            name = fields[1],
-            url = fields[2],
-            description = fields[3],
-            alt_repos = {},
-            repo_id = modhousekeeper.extract_repo_name(fields[2]),
-            category = current_category,
-            installed = false,
-            has_update = false,
-            installed_url = nil,  -- Track which URL is actually installed
-          }
-
-          -- Collect alternative repos as URL/description pairs (fields 4+)
-          for i = 4, #fields, 2 do
-            if fields[i+1] then
-              table.insert(mod_entry.alt_repos, {
-                url = fields[i],
-                description = fields[i+1]
-              })
-            end
-          end
-
-          table.insert(categories[current_category], mod_entry)
-          all_mods[mod_entry.name] = mod_entry
-          mod_count = mod_count + 1
-          debug("  -> added mod: " .. mod_entry.name)
-        else
-          debug("  -> SKIPPED (not enough fields or no category)")
-        end
-      end
+  local function ensure_category(name)
+    if not categories[name] then
+      categories[name] = {}
+      table.insert(category_order, name)
     end
   end
 
-  f:close()
-  debug("parsed " .. mod_count .. " mods in " .. tabutil.count(categories) .. " categories")
+  local function add_entry(raw)
+    if not raw.name or not raw.url or not raw.category then
+      debug("skipping malformed entry")
+      return
+    end
+    local entry = resolve_entry(raw)
+    ensure_category(entry.category)
+    -- An entry with the same name overrides an earlier one (lets the user
+    -- overlay replace a curated entry).
+    local existing = all_mods[entry.name]
+    if existing then
+      local bucket = categories[existing.category]
+      for i, e in ipairs(bucket) do
+        if e.name == entry.name then
+          table.remove(bucket, i)
+          break
+        end
+      end
+    end
+    table.insert(categories[entry.category], entry)
+    all_mods[entry.name] = entry
+  end
+
+  local function load_file(path, required)
+    local f = io.open(path, "r")
+    if not f then
+      if required then
+        print("modhousekeeper: ERROR - could not open " .. path)
+      end
+      return
+    end
+    f:close()
+    local ok, data = pcall(dofile, path)
+    if not ok or type(data) ~= "table" or type(data.mods) ~= "table" then
+      print("modhousekeeper: ERROR - could not load " .. path .. ": " .. tostring(data))
+      return
+    end
+    if type(data.categories) == "table" then
+      for _, cname in ipairs(data.categories) do
+        ensure_category(cname)
+      end
+    end
+    for _, raw in ipairs(data.mods) do
+      add_entry(raw)
+    end
+  end
+
+  -- Curated list (required), then user overlay (optional).
+  load_file(modhousekeeper.mods_path, true)
+  load_file(modhousekeeper.mods_local_path, false)
 
   modhousekeeper.categories = categories
   modhousekeeper.category_order = category_order
   modhousekeeper.all_mods = all_mods
+  debug("loaded " .. tabutil.count(all_mods) .. " mods in " .. #category_order .. " categories")
   modhousekeeper.build_flat_list()
 end
 
@@ -245,6 +243,7 @@ function modhousekeeper.scan_local_mods()
         table.insert(local_mods, {
           name = mod_name,
           repo_id = mod_name,
+          install_dir = mod_name,
           description = "Local mod",
           url = "",
           alt_repos = {},
@@ -306,26 +305,40 @@ end
 -- Check installation status of all mods
 function modhousekeeper.check_installation_status()
   -- Build a lookup of installed dirs by their normalized name, so we can match
-  -- mods whose on-disk dir differs from the URL-derived repo_id (e.g. broadcast).
+  -- mods whose on-disk dir differs from the expected one (e.g. broadcast).
   local by_norm = {}
   for _, d in ipairs(get_installed_mod_dirs()) do
     by_norm[normalize_repo_name(d)] = d
   end
 
   for name, mod_entry in pairs(modhousekeeper.all_mods) do
-    local exact = modhousekeeper.install_path .. mod_entry.repo_id
-    if util.file_exists(exact .. "/lib/mod.lua") then
-      mod_entry.installed = true
-      mod_entry.install_dir = mod_entry.repo_id
-    else
-      local d = by_norm[normalize_repo_name(mod_entry.repo_id)]
-      if d then
-        mod_entry.installed = true
-        mod_entry.install_dir = d
-      else
-        mod_entry.installed = false
-        mod_entry.install_dir = mod_entry.repo_id
+    -- Prefer the catalog-resolved install_dir, then the URL basename.
+    local candidates = {}
+    if mod_entry.install_dir then
+      candidates[#candidates + 1] = mod_entry.install_dir
+    end
+    if mod_entry.repo_id and mod_entry.repo_id ~= mod_entry.install_dir then
+      candidates[#candidates + 1] = mod_entry.repo_id
+    end
+
+    local found = nil
+    for _, d in ipairs(candidates) do
+      if util.file_exists(modhousekeeper.install_path .. d .. "/lib/mod.lua") then
+        found = d
+        break
       end
+    end
+    if not found then
+      -- Fuzzy: normalized match against installed dirs.
+      found = by_norm[normalize_repo_name(mod_entry.install_dir or mod_entry.repo_id or name)]
+    end
+
+    if found then
+      mod_entry.installed = true
+      mod_entry.install_dir = found
+    else
+      mod_entry.installed = false
+      -- Keep the canonical install_dir so a future install targets it.
     end
   end
   modhousekeeper.build_flat_list()
@@ -493,7 +506,8 @@ end
 -- Install a mod
 function modhousekeeper.install_mod(mod_entry, callback, install_url)
   local url = install_url or mod_entry.url
-  local install_path = modhousekeeper.install_path .. mod_entry.repo_id
+  local dir = mod_entry.install_dir or modhousekeeper.extract_repo_name(url)
+  local install_path = modhousekeeper.install_path .. dir
 
   -- Parse URL to check for branch specification
   local repo_url, branch = parse_github_url(url)
@@ -513,7 +527,7 @@ function modhousekeeper.install_mod(mod_entry, callback, install_url)
   norns.system_cmd(clone_cmd, function(output)
     if util.file_exists(install_path .. "/lib/mod.lua") then
       mod_entry.installed = true
-      mod_entry.install_dir = mod_entry.repo_id
+      mod_entry.install_dir = dir
       mod_entry.installed_url = url
       modhousekeeper.show_message(mod_entry.name .. " installed!")
       debug("installed " .. mod_entry.name .. " from " .. url)
@@ -607,12 +621,32 @@ function modhousekeeper.remove_mod(mod_entry, callback)
 
   modhousekeeper.show_message("Removing " .. mod_entry.name .. "...")
 
-  norns.system_cmd("rm -rf " .. shell_escape(mod_path) .. " 2>&1", function(output)
+  local dir = get_mod_dir(mod_entry)
+
+  local function finish()
     mod_entry.installed = false
     mod_entry.has_update = false
     modhousekeeper.show_message(mod_entry.name .. " removed!")
     modhousekeeper.build_flat_list()
     if callback then callback() end
+  end
+
+  local function rm_fallback(reason)
+    print("modhousekeeper: maiden remove unavailable (" .. tostring(reason) .. "), using rm -rf")
+    norns.system_cmd("rm -rf " .. shell_escape(mod_path) .. " 2>&1", function()
+      finish()
+    end)
+  end
+
+  -- Prefer maiden's own removal (more norns-native); fall back to rm -rf if
+  -- maiden isn't available or the directory is still there afterwards.
+  norns.system_cmd("maiden project remove " .. shell_escape(dir) .. " 2>&1", function(output)
+    if util.file_exists(mod_path) then
+      rm_fallback(output)
+    else
+      debug("removed " .. mod_entry.name .. " via maiden")
+      finish()
+    end
   end)
 end
 
@@ -724,52 +758,27 @@ function modhousekeeper.load_settings()
   end
 end
 
--- Create local mods.list copy if it doesn't exist
-function modhousekeeper.create_local_mods_list()
-  local f = io.open(modhousekeeper.mods_list_local_path, "r")
-  if f then
-    io.close(f)
-    return  -- Already exists
-  end
-
-  -- Copy from main mods.list
-  local source = io.open(modhousekeeper.mods_list_path, "r")
-  if not source then
-    print("modhousekeeper: ERROR - could not open mods.list to copy")
-    return
-  end
-
-  local dest = io.open(modhousekeeper.mods_list_local_path, "w")
-  if not dest then
-    io.close(source)
-    print("modhousekeeper: ERROR - could not create mods.list.local")
-    return
-  end
-
-  io.output(dest)
-  for line in source:lines() do
-    io.write(line .. "\n")
-  end
-
-  io.close(source)
-  io.close(dest)
-  debug("created local mods.list")
-end
-
--- Get the active mods list path based on settings
-function modhousekeeper.get_active_mods_list_path()
-  if modhousekeeper.settings.use_local_mods_list then
-    return modhousekeeper.mods_list_local_path
-  else
-    return modhousekeeper.mods_list_path
-  end
+-- Refresh the community catalog from the network, then reload the mod list so
+-- descriptions / install dirs pick up any changes.
+function modhousekeeper.refresh_catalog()
+  modhousekeeper.show_info_popup("Refreshing catalog...")
+  catalog.refresh(function(ok, msg)
+    if ok then
+      modhousekeeper.load_mods()
+      modhousekeeper.check_installation_status()
+      modhousekeeper.scan_local_mods()
+      modhousekeeper.build_flat_list()
+    end
+    modhousekeeper.show_info_popup(msg)
+  end)
 end
 
 -- Initialize mod
 function modhousekeeper.init()
   local status, err = pcall(function()
     modhousekeeper.load_settings()
-    modhousekeeper.parse_mods_list()
+    catalog.load()
+    modhousekeeper.load_mods()
     modhousekeeper.check_installation_status()
     modhousekeeper.scan_local_mods()
     modhousekeeper.build_flat_list()
@@ -920,7 +929,9 @@ menu_ui.key = function(n, z)
         -- K3: Execute trigger action
         local setting = modhousekeeper.settings_list[modhousekeeper.settings_selected]
         if setting.type == "trigger" then
-          if setting.id == "update_modhousekeeper" then
+          if setting.id == "refresh_catalog" then
+            modhousekeeper.refresh_catalog()
+          elseif setting.id == "update_modhousekeeper" then
             modhousekeeper.update_self()
           elseif setting.id == "check_mod_updates" then
             modhousekeeper.check_updates_with_popup()
@@ -1032,23 +1043,12 @@ menu_ui.enc = function(n, delta)
       local setting = modhousekeeper.settings_list[modhousekeeper.settings_selected]
       if setting.type == "toggle" then
         modhousekeeper.settings[setting.id] = not modhousekeeper.settings[setting.id]
-
-        -- Handle special actions for certain settings
-        if setting.id == "use_local_mods_list" then
-          if modhousekeeper.settings[setting.id] then
-            modhousekeeper.create_local_mods_list()
-          end
-          -- Reload mods list from the newly selected source
-          modhousekeeper.parse_mods_list()
-          modhousekeeper.check_installation_status()
-          modhousekeeper.build_flat_list()
-          modhousekeeper.show_message("Mods list reloaded")
-        end
-
         modhousekeeper.save_settings()
       elseif setting.type == "trigger" then
         -- Execute trigger action
-        if setting.id == "update_modhousekeeper" then
+        if setting.id == "refresh_catalog" then
+          modhousekeeper.refresh_catalog()
+        elseif setting.id == "update_modhousekeeper" then
           modhousekeeper.update_self()
         elseif setting.id == "check_mod_updates" then
           modhousekeeper.check_updates_with_popup()

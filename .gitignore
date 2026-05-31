@@ -1,2 +1,8 @@
-# Local mods list to prevent merge conflicts
+# Per-user mod overlay (additions / overrides), not version-controlled
+mods.local.lua
+
+# Legacy per-user CSV list (no longer read)
 mods.list.local
+
+# maiden project metadata
+.project
