@@ -31,7 +31,7 @@ return {
 
   mods = {
     -- Arc & Grid
-    { name = "arcify", url = "https://github.com/mimetaur/arcify", description = "Map arc encoders to parameters", category = "Arc & Grid" },
+    -- (arcify removed: it is a Lua library (lib/arcify.lua), not a mod -- no lib/mod.lua)
     { name = "Combiner", url = "https://github.com/dstroud/combiner", description = "Configure & aggregate multiple grids", category = "Arc & Grid" },
     { name = "gridkeys", url = "https://github.com/p3r7/gridkeys", description = "Use grid as MIDI keyboard anywhere", category = "Arc & Grid" },
     { name = "iiitoii", url = "https://github.com/frederickk/iiitoii", description = "iii community scripts ported to norns + crow", category = "Arc & Grid" },
@@ -73,10 +73,10 @@ return {
     { name = "Telexo", url = "https://github.com/brokyo/norns-telexo", description = "Control TXO CV and TR ports from params", category = "Modulation & sequencing" },
 
     -- Network & Streaming
-    { name = "broadcast", url = "https://github.com/schollz/norns-broadcast", description = "Stream audio to norns.online", category = "Network & Streaming", dir = "broadcast" },
+    { name = "broadcast", url = "https://github.com/schollz/broadcast", description = "Stream audio to norns.online", category = "Network & Streaming" },
     { name = "ndi-mod", url = "https://github.com/Dewb/ndi-mod", description = "Share norns screen over network via NDI", category = "Network & Streaming" },
     { name = "QRemote", url = "https://github.com/Quixotic7/qremote", description = "Remote control for norns", category = "Network & Streaming" },
-    { name = "receiver", url = "https://github.com/schollz/norns-receiver", description = "Receive broadcasts from norns users", category = "Network & Streaming", dir = "receiver" },
+    { name = "receiver", url = "https://github.com/schollz/norns-receiver", description = "Receive broadcasts from norns users", category = "Network & Streaming" },
     { name = "semiconductor", url = "https://github.com/jaseknighter/semiconductor", description = "Norns ensemble performance script", category = "Network & Streaming" },
 
     -- Nota Bene (nb)
