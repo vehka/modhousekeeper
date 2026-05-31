@@ -60,11 +60,14 @@ nb_harvest, https://github.com/imminentgloom/nb_harvest, høstløv, the synth vo
 Seeker, https://github.com/brokyo/seeker, A lightweight n.b arpeggiation mod
 sidvagn, https://github.com/sonocircuit/sidvagn, keyboard and sequencer
 Oilcan Percussion Co, https://github.com/zjb-s/oilcan, Greasy percussion synth for n.b
+doubledecker, https://github.com/sixolet/doubledecker, 2-layer synth a la CS-80 (nb voice)
+nb_drumcrow, https://github.com/entzmingerc/nb_drumcrow, Turns crow into a synth voice for nb
+nb_polyperc, https://github.com/dstroud/nb_polyperc, PolyPerc engine as an nb voice
+nb_rudiments, https://github.com/entzmingerc/nb_rudiments, Rudiments synth engine as an nb voice
 
-# Uncategorized / Miscellaneous
+# Misc
 
-cron, https://github.com/stvnrlly/cron, Manage cron on norns via Maiden
-during development
+cron, https://github.com/stvnrlly/cron, Manage cron on norns via Maiden during development
 lumberjack, https://github.com/stvnrlly/lumberjack, save the current script’s matron logs to a text file
 Monomaniac, https://github.com/xmacex/monomaniac, Toggle stereo and mono input
 nice-tapes, https://github.com/MentalSandal/nice-tapes, Customized tape file names
@@ -72,5 +75,6 @@ Oblique, https://github.com/stvnrlly/oblique, Oblique Strategies in params menu
 playdate-norns, https://github.com/midouest/playdate-norns, Playdate API available for norns scripts
 playdate-norns-arc, https://github.com/midouest/playdate-norns-arc, Turn Playdate into an arc emulator for norns
 random_script, https://github.com/stvnrlly/random_script, Find a random script on norns
-warmreload, https://github.com/schollz/warmreload, Auto-reload scripts 
+warmreload, https://github.com/schollz/warmreload, Auto-reload scripts
 z_tuning, https://github.com/catfact/z_tuning, apply custom tunings
+norns-example-mod, https://github.com/monome/norns-example-mod, Example mod for matron

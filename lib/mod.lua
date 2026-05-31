@@ -50,7 +50,7 @@ local modhousekeeper = {
   collapsed_categories = {},  -- {category_name = true/false}
   selected_index = 1,
   scroll_offset = 0,
-  max_visible = 6,
+  max_visible = 5,
 
   -- Confirmation dialog state
   confirm_dialog = nil,  -- {action="install/update/remove", mod_entry=...}
@@ -71,6 +71,33 @@ function modhousekeeper.extract_repo_name(url)
     repo = repo:gsub("%.git$", "")  -- Remove .git suffix if present
   end
   return repo
+end
+
+-- Normalize a directory/repo name for fuzzy matching.
+-- Many mods are published under one name (e.g. "broadcast") but live in a repo
+-- named "norns-broadcast", so the on-disk dir won't match the repo_id derived
+-- from the URL. Lowercasing + stripping a leading "norns-" lets us match them.
+-- (Stopgap until Phase 2 switches to project_name as the canonical dir.)
+local function normalize_repo_name(name)
+  return name:lower():gsub("^norns%-", "")
+end
+
+-- Glob installed mod directories (those containing lib/mod.lua).
+local function get_installed_mod_dirs()
+  local matches = norns.system_glob(_path.code .. "*/lib/mod.lua") or {}
+  local dirs = {}
+  for _, path in ipairs(matches) do
+    local d = path:match(_path.code .. "([%w_%-%.]+)/lib/mod%.lua")
+    if d then
+      table.insert(dirs, d)
+    end
+  end
+  return dirs
+end
+
+-- Resolve the actual on-disk directory for a mod entry.
+local function get_mod_dir(mod_entry)
+  return mod_entry.install_dir or mod_entry.repo_id
 end
 
 -- Parse CSV line with support for quoted fields
@@ -191,29 +218,27 @@ end
 
 -- Scan for installed mods not in mods.list
 function modhousekeeper.scan_local_mods()
-  local pattern = "*/lib/mod.lua"
-  local matches = norns.system_glob(_path.code .. pattern)
+  local dirs = get_installed_mod_dirs()
 
-  if not matches then
+  if #dirs == 0 then
     debug("no mods found during scan")
     return
   end
 
+  -- Set of normalized repo_ids already known from mods.list, so we don't
+  -- list e.g. an installed "broadcast" dir as a local mod when "norns-broadcast"
+  -- is already in the list.
+  local known = {}
+  for name, mod_entry in pairs(modhousekeeper.all_mods) do
+    known[normalize_repo_name(mod_entry.repo_id)] = true
+  end
+
   local local_mods = {}
 
-  for _, path in ipairs(matches) do
-    -- Extract mod name from path
-    local mod_name = path:match(_path.code .. "([%w_%-]+)/lib/mod%.lua")
-
-    if mod_name and mod_name ~= "modhousekeeper" then
-      -- Check if this mod is in our mods.list
-      local in_list = false
-      for name, mod_entry in pairs(modhousekeeper.all_mods) do
-        if mod_entry.repo_id == mod_name then
-          in_list = true
-          break
-        end
-      end
+  for _, mod_name in ipairs(dirs) do
+    if mod_name ~= "modhousekeeper" then
+      -- Check if this mod is in our mods.list (fuzzy/normalized match)
+      local in_list = known[normalize_repo_name(mod_name)] or false
 
       -- If not in list, add to local mods
       if not in_list then
@@ -280,9 +305,28 @@ end
 
 -- Check installation status of all mods
 function modhousekeeper.check_installation_status()
+  -- Build a lookup of installed dirs by their normalized name, so we can match
+  -- mods whose on-disk dir differs from the URL-derived repo_id (e.g. broadcast).
+  local by_norm = {}
+  for _, d in ipairs(get_installed_mod_dirs()) do
+    by_norm[normalize_repo_name(d)] = d
+  end
+
   for name, mod_entry in pairs(modhousekeeper.all_mods) do
-    local mod_path = modhousekeeper.install_path .. mod_entry.repo_id
-    mod_entry.installed = util.file_exists(mod_path .. "/lib/mod.lua")
+    local exact = modhousekeeper.install_path .. mod_entry.repo_id
+    if util.file_exists(exact .. "/lib/mod.lua") then
+      mod_entry.installed = true
+      mod_entry.install_dir = mod_entry.repo_id
+    else
+      local d = by_norm[normalize_repo_name(mod_entry.repo_id)]
+      if d then
+        mod_entry.installed = true
+        mod_entry.install_dir = d
+      else
+        mod_entry.installed = false
+        mod_entry.install_dir = mod_entry.repo_id
+      end
+    end
   end
   modhousekeeper.build_flat_list()
 end
@@ -334,7 +378,7 @@ function modhousekeeper.check_updates(callback)
 
   for name, mod_entry in pairs(modhousekeeper.all_mods) do
     if mod_entry.installed then
-      local mod_path = modhousekeeper.install_path .. mod_entry.repo_id
+      local mod_path = modhousekeeper.install_path .. get_mod_dir(mod_entry)
 
       -- Check if updates are available
       norns.system_cmd("cd " .. mod_path .. " && git fetch 2>&1", function(output)
@@ -368,12 +412,16 @@ function modhousekeeper.check_updates_with_popup()
     return
   end
 
-  -- Create a state table to track progress
+  -- Create a state table to track progress. Stored on modhousekeeper so the
+  -- key handler can mark it cancelled if the user dismisses the popup (e.g. when
+  -- one repo hangs and the count would otherwise never complete).
   local check_state = {
     checked = 0,
     total = total,
-    update_count = 0
+    update_count = 0,
+    cancelled = false,
   }
+  modhousekeeper.check_state = check_state
 
   -- Show initial popup
   modhousekeeper.info_popup = {message = "Checking 0/" .. total .. " mods"}
@@ -382,10 +430,12 @@ function modhousekeeper.check_updates_with_popup()
   -- Check each mod
   for name, mod_entry in pairs(modhousekeeper.all_mods) do
     if mod_entry.installed then
-      local mod_path = modhousekeeper.install_path .. mod_entry.repo_id
+      local mod_path = modhousekeeper.install_path .. get_mod_dir(mod_entry)
 
       norns.system_cmd("cd " .. mod_path .. " && git fetch 2>&1", function(output)
+        if check_state.cancelled then return end
         norns.system_cmd("cd " .. mod_path .. " && git rev-list HEAD...@{u} --count 2>&1", function(count_output)
+          if check_state.cancelled then return end
           local count = tonumber(count_output)
           mod_entry.has_update = count and count > 0
 
@@ -403,6 +453,7 @@ function modhousekeeper.check_updates_with_popup()
             end
           else
             -- All done - show results
+            modhousekeeper.check_state = nil
             modhousekeeper.build_flat_list()
             local msg
             if check_state.update_count == 0 then
@@ -462,6 +513,7 @@ function modhousekeeper.install_mod(mod_entry, callback, install_url)
   norns.system_cmd(clone_cmd, function(output)
     if util.file_exists(install_path .. "/lib/mod.lua") then
       mod_entry.installed = true
+      mod_entry.install_dir = mod_entry.repo_id
       mod_entry.installed_url = url
       modhousekeeper.show_message(mod_entry.name .. " installed!")
       debug("installed " .. mod_entry.name .. " from " .. url)
@@ -476,13 +528,28 @@ end
 
 -- Update a mod
 function modhousekeeper.update_mod(mod_entry, callback)
-  local mod_path = modhousekeeper.install_path .. mod_entry.repo_id
+  local dir = get_mod_dir(mod_entry)
+  local mod_path = modhousekeeper.install_path .. dir
 
   modhousekeeper.show_message("Updating " .. mod_entry.name .. "...")
 
   norns.system_cmd("cd " .. mod_path .. " && git pull 2>&1", function(output)
-    mod_entry.has_update = false
-    modhousekeeper.show_message(mod_entry.name .. " updated!")
+    output = output or ""
+    debug("update '" .. mod_entry.name .. "' (" .. dir .. ") output:\n" .. output)
+
+    if output:match("Already up to date") or output:match("Already up%-to%-date") then
+      mod_entry.has_update = false
+      modhousekeeper.show_message(mod_entry.name .. " up to date")
+    elseif output:match("Updating") or output:match("Fast%-forward") or output:match("Merge made") then
+      mod_entry.has_update = false
+      modhousekeeper.show_message(mod_entry.name .. " updated!")
+    else
+      -- Pull did not clearly succeed: dirty tree, no upstream, detached HEAD,
+      -- merge conflict, network error, etc. Surface it instead of lying.
+      print("modhousekeeper: update FAILED for " .. mod_entry.name .. " (" .. dir .. "):\n" .. output)
+      modhousekeeper.show_info_popup(mod_entry.name .. "\nupdate failed\nCheck matron")
+    end
+
     modhousekeeper.build_flat_list()
     if callback then callback() end
   end)
@@ -524,7 +591,7 @@ end
 
 -- Remove a mod
 function modhousekeeper.remove_mod(mod_entry, callback)
-  local mod_path, err = get_safe_mod_path(mod_entry.repo_id)
+  local mod_path, err = get_safe_mod_path(get_mod_dir(mod_entry))
   if not mod_path then
     print("modhousekeeper: ERROR - " .. err)
     modhousekeeper.show_message("Error: invalid mod path")
@@ -723,13 +790,17 @@ end
 -- Menu UI object
 local menu_ui = {
   animation_active = false,
+  animation_shown = false,  -- play the intro only once per session
 }
 
 menu_ui.init = function()
   modhousekeeper.check_installation_status()
 
-  -- Start animation if not disabled
-  if not modhousekeeper.settings.disable_animation then
+  -- Start animation if not disabled and not already shown this session.
+  -- Re-entering the menu (e.g. toggling between a script and the menu with K1)
+  -- should not replay the full animation.
+  if not modhousekeeper.settings.disable_animation and not menu_ui.animation_shown then
+    menu_ui.animation_shown = true
     menu_ui.animation_active = true
     animation.start(
       function()
@@ -759,6 +830,18 @@ menu_ui.key = function(n, z)
     if menu_ui.animation_active then
       animation.stop()
       menu_ui.animation_active = false
+      mod.menu.redraw()
+      return
+    end
+
+    -- Dismiss info popup with any key. Also cancel an in-progress update check
+    -- so a hung repo can't keep a stale "Checking n/m" popup on screen.
+    if modhousekeeper.info_popup then
+      modhousekeeper.info_popup = nil
+      if modhousekeeper.check_state then
+        modhousekeeper.check_state.cancelled = true
+        modhousekeeper.check_state = nil
+      end
       mod.menu.redraw()
       return
     end
@@ -799,7 +882,7 @@ menu_ui.key = function(n, z)
         if dialog.action == "install" or dialog.action == "reinstall" then
           -- For reinstall, first remove then install
           if dialog.action == "reinstall" then
-            local mod_path, err = get_safe_mod_path(dialog.mod_entry.repo_id)
+            local mod_path, err = get_safe_mod_path(get_mod_dir(dialog.mod_entry))
             if not mod_path then
               print("modhousekeeper: ERROR - " .. err)
               modhousekeeper.show_message("Error: invalid mod path")
@@ -904,9 +987,13 @@ menu_ui.enc = function(n, delta)
         modhousekeeper.scroll_offset = modhousekeeper.selected_index - modhousekeeper.max_visible
       end
     elseif n == 3 then
-      -- E3: Show confirmation dialog for action
+      -- E3: collapse/expand category, or show action dialog on a mod
       local item = modhousekeeper.flat_list[modhousekeeper.selected_index]
-      if item and item.type == "mod" then
+      if item and item.type == "category" then
+        -- E3 either direction toggles the category open/closed
+        modhousekeeper.collapsed_categories[item.name] = not modhousekeeper.collapsed_categories[item.name]
+        modhousekeeper.build_flat_list()
+      elseif item and item.type == "mod" then
         local mod_entry = item.data
 
         if delta > 0 then
@@ -1005,7 +1092,7 @@ local function draw_mod_list()
   local end_idx = math.min(start_idx + modhousekeeper.max_visible - 1, #modhousekeeper.flat_list)
 
   -- Draw visible items
-  local y = 18
+  local y = 19
   for i = start_idx, end_idx do
     local item = modhousekeeper.flat_list[i]
     local is_selected = (i == modhousekeeper.selected_index)
@@ -1024,20 +1111,20 @@ local function draw_mod_list()
       local mod_entry = item.data
       screen.level(is_selected and 15 or 8)
 
-      -- Status indicator
+      -- Status indicator (indented to sit under its category header)
       if mod_entry.has_update then
-        screen.move(2, y)
+        screen.move(8, y)
         screen.text("◆")  -- Update available
       elseif mod_entry.installed then
-        screen.move(2, y)
+        screen.move(8, y)
         screen.text("◉")  -- Installed
       else
-        screen.move(2, y)
+        screen.move(8, y)
         screen.text("○")  -- Not installed
       end
 
       -- Mod name
-      screen.move(12, y)
+      screen.move(18, y)
       screen.text(mod_entry.name)
     end
 
