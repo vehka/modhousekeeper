@@ -640,7 +640,7 @@ function modhousekeeper.remove_mod(mod_entry, callback)
 
   -- Prefer maiden's own removal (more norns-native); fall back to rm -rf if
   -- maiden isn't available or the directory is still there afterwards.
-  norns.system_cmd("maiden project remove " .. shell_escape(dir) .. " 2>&1", function(output)
+  norns.system_cmd("/home/we/maiden project remove " .. shell_escape(dir) .. " 2>&1", function(output)
     if util.file_exists(mod_path) then
       rm_fallback(output)
     else
