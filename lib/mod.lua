@@ -517,11 +517,11 @@ function modhousekeeper.install_mod(mod_entry, callback, install_url)
   local clone_cmd
   if branch then
     -- Clone specific branch
-    clone_cmd = "git clone -b " .. branch .. " " .. repo_url .. " " .. install_path .. " 2>&1"
+    clone_cmd = "git clone --recurse-submodules -b " .. branch .. " " .. repo_url .. " " .. install_path .. " 2>&1"
     debug("cloning " .. repo_url .. " branch " .. branch)
   else
     -- Clone default branch
-    clone_cmd = "git clone " .. repo_url .. " " .. install_path .. " 2>&1"
+    clone_cmd = "git clone --recurse-submodules " .. repo_url .. " " .. install_path .. " 2>&1"
   end
 
   norns.system_cmd(clone_cmd, function(output)
@@ -547,7 +547,9 @@ function modhousekeeper.update_mod(mod_entry, callback)
 
   modhousekeeper.show_message("Updating " .. mod_entry.name .. "...")
 
-  norns.system_cmd("cd " .. mod_path .. " && git pull 2>&1", function(output)
+  -- the submodule step also repairs mods that were cloned without theirs
+  norns.system_cmd("cd " .. mod_path .. " && git pull 2>&1"
+      .. " && git submodule update --init --recursive 2>&1", function(output)
     output = output or ""
     debug("update '" .. mod_entry.name .. "' (" .. dir .. ") output:\n" .. output)
 
